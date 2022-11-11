@@ -1,0 +1,71 @@
+%%%%%%%%%%%%%%%%%%%% ABBREVIATIONS %%%%%%%%%%%%%%%%%%%%
+\newcommand{\bb}[1]{\mathbb{#1}}
+\renewcommand{\bf}[1]{\boldsymbol{\mathbf{#1}}}
+\renewcommand{\cal}[1]{\mathcal{#1}}
+\renewcommand{\frak}[1]{\mathfrak{#1}}
+
+\newcommand{\quation}[1]{\begin{equation*}#1\end{equation*}}
+\newcommand{\lign}[1]{\begin{align*}#1\end{align*}}
+\newcommand{\lignat}[2]{\begin{alignat*}{#1}#2\end{alignat*}}
+\newcommand{\ather}[1]{\begin{gather*}#1\end{gather*}}
+\newcommand{\ultline}[1]{\begin{multline*}#1\end{multline*}}
+\newcommand{\ases}[1]{\begin{cases}#1\end{cases}}
+
+\newcommand{\obar}[1]{\overline{#1}}
+\newcommand{\ubar}[1]{\underline{#1}}
+
+\newcommand{\set}[1]{\left\{#1\right\}} % {abc} % braces
+\newcommand{\pa}[1]{\left(#1\right)} % (abc) % parentheses
+\newcommand{\ang}[1]{\left<#1\right>} % <abc> % angle brackets
+\newcommand{\bra}[1]{\left[#1\right]} % [abc] % brackets
+\newcommand{\abs}[1]{\left|#1\right|} % |abc|
+\newcommand{\norm}[1]{\left\|#1\right\|} %||abc||
+
+\newcommand{\mat}[1]{\begin{matrix}#1\end{matrix}} % \mat{1 & 0 & 1 \\ 0 & 0 & 1 \\ 1 & 1 & 0}
+\newcommand{\pmat}[1]{\pa{\mat{#1}}}
+\newcommand{\bmat}[1]{\bra{\mat{#1}}} 
+
+\newcommand{\sm}[1]{\begin{smallmatrix}#1\end{smallmatrix}}
+\newcommand{\psm}[1]{\pa{\sm{#1}}}
+\newcommand{\bsm}[1]{\bra{\sm{#1}}}
+
+\newcommand{\tci}[2]{\set{\,#1 \mid{} #2\,}}
+\newcommand{\pfrac}[2]{\pa{\frac{#1}{#2}}}
+\newcommand{\der}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\pder}[2]{\pfrac{\partial #1}{\partial #2}}
+
+\newcommand{\firstp}[2]{\ensuremath{\displaystyle
+     \frac{\partial{#1}}{\partial{#2}}}} % \firstp{f}{x}
+\newcommand{\secondp}[3]{\ensuremath{\displaystyle
+     \frac{\partial^{2}{#1}}{\partial{#2}\,\partial{#3}^T}}} % \secondp{f}{x}{y}
+\newcommand{\secondpscalar}[3]{\ensuremath{\displaystyle
+     \frac{\partial^{2}{#1}}{\partial{#2}\,\partial{#3}}}} % \secondp{f}{x}{y}
+
+%%%%%%%%%%%%%%%%%%%% OPERATORS %%%%%%%%%%%%%%%%%%%%
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\sgn}{sgn}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\SE}{SE}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\Corr}{Corr}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+%%%%%%%%%%%%%%%%%%%% LETTERS %%%%%%%%%%%%%%%%%%%%
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\R}{\mathbb{R}}
+
+\newcommand{\iidsim}{\stackrel{i.i.d.}{\sim}}
+\newcommand{\iid}{\stackrel{i.i.d.}{\sim}}
+
+\newcommand{\st}{\text{ }s.t.\text{ }}
+
+\newcommand{\dps}{\displaystyle}
+\usepackage{multirow}
+\usepackage{subfigure}
+\usepackage{enumitem}
+
+\newcommand{\rank}{\text{rank}}
