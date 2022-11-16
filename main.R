@@ -1,6 +1,6 @@
-args <- commandArgs(trailingOnly = TRUE)
+# args <- commandArgs(trailingOnly = TRUE)
 
-# args <- c(500, 300, 100, 50, 0.2)
+args <- c(500, 300, 100, 50, 10)
 
 # Simulation  setup ####
 n = as.numeric(args[1])
