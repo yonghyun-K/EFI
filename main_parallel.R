@@ -1,7 +1,17 @@
-# args <- commandArgs(trailingOnly = TRUE)
+args <- commandArgs(trailingOnly = TRUE)
 
 # args <- c(n, n_B, B, SIMNUM, lambda)
-args <- c(500, 300, 100, 1000, 1)
+# args <- c(500, 300, 100, 500, 10)
+
+library(foreach)
+library(doParallel)
+
+cores=detectCores()
+print(paste("cores =", cores))
+cl <- makeCluster(4) #not to overload your computer
+registerDoParallel(cl)
+
+set.seed(1)
 
 # Simulation  setup ####
 n = as.numeric(args[1])
@@ -9,39 +19,44 @@ p = 2
 n_B = as.numeric(args[2])
 B = as.numeric(args[3])
 SIMNUM = as.numeric(args[4])
-res1 = NULL
-res2 = NULL
-set.seed(1)
-for(simnum in 1:SIMNUM){
-  set.seed(simnum)
+
+p_x = c(0.3, 0.25, 0.25, 0.2)
+p_Y1 = c(0.4, 0.3, 0.4, 0.8)
+
+p_Y2 = c((0.8 + 0.4) / 2, 0.8 * 0.3 + 0.1, 0.9 - 0.5 * 0.4, 0.6)
+
+theta1 <- sum(p_x * p_Y1)
+theta2 <- sum(p_x * p_Y2)
+
+final_res <- foreach(simnum = 1:SIMNUM, .combine = rbind) %dopar% {
+# for(simnum in 1:SIMNUM){
   print(simnum)
   
   # Generate X and Y ####
-  p_x = c(0.3, 0.25, 0.25, 0.2)
+
   X = matrix(rep(1:4, n * p)[rmultinom(n * p, 1, p_x) == 1], nr = n, nc = p)
   colnames(X) <- paste("X", 1:p, sep = "")
   # table(X) / n
   
-  p_Y1 = c(0.4, 0.3, 0.4, 0.8)
+
   p1 = p_Y1[X[,1]]
   Y1 = rbinom(n, 1, p1)
-  theta1 = sum(p_x * p_Y1)
+  theta1 <- sum(p_x * p_Y1)
   
   # p2 = c((0.8 + Y1) / 2, 0.8 * Y1 + 0.1, 0.9 - 0.5 * Y1, 0.6)[X[,1]]
   
   p2 = rowSums(cbind((0.8 + Y1) / 2, 0.8 * Y1 + 0.1, 0.9 - 0.5 * Y1, 0.6) * model.matrix(~ 0 + as.factor(X[,1]))) 
   Y2 = rbinom(n, 1, p2)
   
-  p_Y2 = c((0.8 + 0.4) / 2, 0.8 * 0.3 + 0.1, 0.9 - 0.5 * 0.4, 0.6)
-  theta2 = sum(p_x * p_Y2)
+
   
   theta = c(theta1, theta2)
-
-  # p_delta1 = mean(X[,1] / 8 + 1 / 2)
-  # p_delta2 = mean(X[,2] / 6 + 1 / 3)
   
-  p_delta1 = 0.8
-  p_delta2 = 0.7
+  p_delta1 = mean(X[,1] / 8 + 1 / 2)
+  p_delta2 = mean(X[,2] / 6 + 1 / 3)
+  
+  # p_delta1 = 0.8
+  # p_delta2 = 0.7
   
   delta1 = rbinom(n, 1, p_delta1)
   delta2 = rbinom(n, 1, p_delta2)
@@ -184,9 +199,8 @@ for(simnum in 1:SIMNUM){
     w_00 = w_00 + expl_obs * phat_00
   }
   
-  if(sum(w_B) == 0){
-    warning(sum(w_B) == 0)
-    next
+  if(sum(w_B) = 0){
+    stop(sum(w_B) == 0)
   }
   
   w_01 = w_01 / sum(w_B); w_10 = w_10 / sum(w_B); w_00 = w_00 / sum(w_B)
@@ -231,7 +245,7 @@ for(simnum in 1:SIMNUM){
   }else{
     z_imp_01 <- cbind(z_imp_01, z_imp_01)[,-(6:8)]
   }
-
+  
   if(nrow(z_imp_00)!= 0){
     fw_00 = apply(z_imp_00, 1, function(x) {
       tmp = as.character(x)
@@ -247,7 +261,7 @@ for(simnum in 1:SIMNUM){
   }else{
     z_imp_00 <- cbind(z_imp_00, z_imp_00)[,-(6:8)]
   }
-
+  
   # Final estimates ####
   # sum(c(z_imp_10[,5]))
   theta_prop1 = sum(c(z_imp_11[,"Y1"] * z_imp_11[,5], z_imp_10[,"Y1"] * z_imp_10[,5], z_imp_01[,"Y1"] * z_imp_01[,5], z_imp_00[,"Y1"] * z_imp_00[,5])) /
@@ -262,9 +276,12 @@ for(simnum in 1:SIMNUM){
   
   theta_cc = colMeans(y, na.rm = T)
   
-  res1 = rbind(res1, c(Full = theta_full[1], CC = theta_cc[1], FHDI = theta_prop[1]))
-  res2 = rbind(res2, c(Full = theta_full[2], CC = theta_cc[2], FHDI = theta_prop[2]))
+  c(Full1 = theta_full[1], CC1 = theta_cc[1], FHDI1 = theta_prop[1],
+    Full2 = theta_full[2], CC2 = theta_cc[2], FHDI2 = theta_prop[2])
 }
+
+res1 <- final_res[,1:3]
+res2 <- final_res[,4:6]
 
 # Summary table ####
 BIAS = colMeans(res1 - theta1)
