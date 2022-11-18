@@ -52,8 +52,8 @@ final_res <- foreach(simnum = 1:SIMNUM, .combine = rbind) %dopar% {
   
   theta = c(theta1, theta2)
   
-  p_delta1 = mean(X[,1] / 8 + 1 / 2)
-  p_delta2 = mean(X[,2] / 6 + 1 / 3)
+  p_delta1 = X[,1] / 8 + 1 / 2
+  p_delta2 = X[,2] / 6 + 1 / 3
   
   # p_delta1 = 0.8
   # p_delta2 = 0.7

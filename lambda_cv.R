@@ -1,14 +1,14 @@
 n = 500
 p = 2
 n_B = 300
-B = 10
+B = 100
 SIMNUM = 50
 res = NULL
 K = 10
 
-lambda_vec = seq(from = 0.0, to = 20, len = 100)
+lambda_vec = seq(from = 0.0, to = 10, len = 10)
 
-set.seed(1)
+# set.seed(1)
 
 
 
@@ -30,8 +30,15 @@ theta2 = sum(p_x * p_Y2)
 
 theta = c(theta1, theta2)
 
-delta1 = rbinom(n, 1, 0.8)
-delta2 = rbinom(n, 1, 0.7)
+# p_delta1 = X[,1] / 5 + 1 / 5
+p_delta1 = X[,1] / 8 + 1 / 2
+p_delta2 = X[,1] / 6 + 1 / 3
+
+# p_delta1 = 0.8
+# p_delta2 = 0.7
+
+delta1 = rbinom(n, 1, p_delta1)
+delta2 = rbinom(n, 1, p_delta2)
 
 Y_ogn = cbind(Y1, Y2)
 theta_full = colMeans(Y_ogn)
@@ -57,7 +64,7 @@ for (lambda in lambda_vec) {
   print(lambda)
   
   res_K = rep(0, K)
-  library(caret)
+
   cuts = cut(sample(1:n, n),breaks=10,labels=FALSE)
   for(k in 1:K){
     # flds = createFolds(1:n, k = K, list = TRUE)
