@@ -1,7 +1,7 @@
 # args <- commandArgs(trailingOnly = TRUE)
 
 # args <- c(n, n_B, B, SIMNUM, lambda)
-args <- c(2000, 1500, 100, 100, 0.0001)
+args <- c(2000, 1500, 100, 100, 1)
 
 # Simulation  setup ####
 n = as.numeric(args[1])
@@ -188,8 +188,8 @@ for(simnum in 1:SIMNUM){
       # print(paste("select_x =", select_x[1], select_x[2]))
       # print(paste("expl_obs =", expl_obs))
     }
-    # print(paste("select_x =", select_x[1], select_x[2]))
-    # print(paste("expl_obs =", expl_obs))
+    print(paste("select_x =", select_x[1], select_x[2]))
+    print(paste("expl_obs =", expl_obs))
     
     # bstp_idx_B = cbind(bstp_idx_B, bstp_idx)
     
