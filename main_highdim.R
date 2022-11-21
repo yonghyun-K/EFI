@@ -1,7 +1,7 @@
 # args <- commandArgs(trailingOnly = TRUE)
 
 # args <- c(n, n_B, B, SIMNUM, lambda)
-args <- c(1900, 1500, 100, 100, 1)
+args <- c(2000, 1500, 100, 100, 1)
 
 # Simulation  setup ####
 n = as.numeric(args[1])
@@ -41,12 +41,12 @@ for(simnum in 1:SIMNUM){
   theta = c(theta1, theta2)
   
   # p_delta1 = X[,1] / 5 + 1 / 5
-  # p_delta1 = X[,1] / 8 + 0.5
+  p_delta1 = X[,1] / 8 + 0.5
   # p_delta1 = X[,1] / 25 + 0.7
-  # p_delta2 = X[,1] / 6 + 1 / 3
+  p_delta2 = X[,1] / 6 + 1 / 3
   
-  p_delta1 = 0.8
-  p_delta2 = 0.7
+  # p_delta1 = 0.8
+  # p_delta2 = 0.7
   
   delta1 = rbinom(n, 1, p_delta1)
   delta2 = rbinom(n, 1, p_delta2)
@@ -72,7 +72,6 @@ for(simnum in 1:SIMNUM){
                        2 * sum(is.na(y[,1]) & !is.na(y[,2])) + 4 * sum(is.na(y[,1]) & is.na(y[,2])),
                      nc = 5)
   
-  expl_obs = 0
   for(b in 1:B){
     select_x = sample(1:p, q, replace = F)
     # select_x = combn(p, q)[,(b+44) %% 45 + 1]
@@ -164,7 +163,7 @@ for(simnum in 1:SIMNUM){
     l_obs = sum(c(l_11, l_01, l_10, l_00)) / nrow(z_oob) # observed likelihood
     l_obs 
     
-    expl_obs2 = exp(lambda * l_obs)
+    expl_obs = exp(lambda * l_obs)
     
     # Find the conditional probabilities ####
     # P(y_mis | y_obs, X_s^{(b)})
@@ -189,8 +188,8 @@ for(simnum in 1:SIMNUM){
       # print(paste("select_x =", select_x[1], select_x[2]))
       # print(paste("expl_obs =", expl_obs))
     }
-    # print(paste("select_x =", select_x[1], select_x[2]))
-    # print(paste("expl_obs =", expl_obs))
+    print(paste("select_x =", select_x[1], select_x[2]))
+    print(paste("expl_obs =", expl_obs))
     
     # bstp_idx_B = cbind(bstp_idx_B, bstp_idx)
     
@@ -253,10 +252,7 @@ for(simnum in 1:SIMNUM){
       z_imp_00 <- cbind(z_imp_00, z_imp_00)[,-(6:8)]
     }
     
-    if(expl_obs2 > expl_obs){
-      z_imp_res = rbind(z_imp_11, z_imp_10, z_imp_01, z_imp_00)
-      expl_obs = expl_obs2
-    }
+    z_imp_res = z_imp_res + expl_obs * rbind(z_imp_11, z_imp_10, z_imp_01, z_imp_00)
     
   }
   
@@ -264,6 +260,8 @@ for(simnum in 1:SIMNUM){
     warning(sum(w_B) == 0)
     next
   }
+  
+  z_imp_res = z_imp_res / sum(w_B)
   
   theta_prop1 = sum(z_imp_res[,"Y1"] * z_imp_res[,5]) / sum(z_imp_res[,5])
   theta_prop2 = sum(z_imp_res[,"Y2"] * z_imp_res[,5]) / sum(z_imp_res[,5])
