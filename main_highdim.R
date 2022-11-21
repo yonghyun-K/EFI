@@ -45,6 +45,9 @@ for(simnum in 1:SIMNUM){
   # p_delta1 = X[,1] / 25 + 0.7
   # p_delta2 = X[,1] / 6 + 1 / 3
   
+  # p_delta1 = 1 / (1 + exp(-(2 + x[,1] - x[,5]))) # 0.8
+  # p_delta2 = 1 / (1 + exp(-(-1 + x[,1] + x[,2] - x[,3]))) # 0.7
+  
   p_delta1 = 0.8
   p_delta2 = 0.7
   
@@ -189,8 +192,8 @@ for(simnum in 1:SIMNUM){
       # print(paste("select_x =", select_x[1], select_x[2]))
       # print(paste("expl_obs =", expl_obs))
     }
-    # print(paste("select_x =", select_x[1], select_x[2]))
-    # print(paste("expl_obs =", expl_obs))
+    print(paste("select_x =", select_x[1], select_x[2]))
+    print(paste("expl_obs =", expl_obs))
     
     # bstp_idx_B = cbind(bstp_idx_B, bstp_idx)
     
