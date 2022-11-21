@@ -267,7 +267,7 @@ for(simnum in 1:SIMNUM){
   
   theta_prop1 = sum(z_imp_res[,"Y1"] * z_imp_res[,5]) / sum(z_imp_res[,5])
   theta_prop2 = sum(z_imp_res[,"Y2"] * z_imp_res[,5]) / sum(z_imp_res[,5])
-
+  
   theta_full
   
   theta_prop = c(theta_prop1, theta_prop2)
