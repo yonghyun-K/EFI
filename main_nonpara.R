@@ -79,6 +79,7 @@ for(simnum in 1:SIMNUM){
     select_x = sample(1:p, q, replace = F)
     # select_x = combn(p, q)[,(b+44) %% 45 + 1]
     # select_x = c(1, 2)
+    # select_x = c(3, 4)
     
     bstp_idx = sample(1:length(train_idx), n_B, replace = TRUE)
     x_b = x[bstp_idx,select_x]
@@ -105,41 +106,67 @@ for(simnum in 1:SIMNUM){
     # n_mat[,,3,-3, drop = F] # n^(1101)
     # p_mat[,,1,] * n_mat[,,3,-3] / apply(p_mat, c(1,2,4), sum)
     
-    p_mat = array(1, dim = dim(n_mat[,,-3,-3])) / length(n_mat[,,-3,-3])
-    
+    p_01 = array(1, dim = c(4, 4, 2, 2)) / 2 # P(Y1 | x1, x2, y2, delta1 = 0, delta2 = 1)
+    p_10 = array(1, dim = c(4, 4, 2, 2)) / 2 # P(Y2 | x1, x2, y1, delta1 = 1, delta2 = 0)
+    p_00 = array(1, dim = c(4, 4, 2, 2)) / 4 # P(Y1, Y2 | x1, x2, delta1 = 0, delta2 = 0)
+
     while(T){
-      nhat_11 = n_mat[,,-3,-3] # n^(1111)
-      nhat_01 = sweep(p_mat, MARGIN = c(1,2,4), n_mat[,,3,-3] / apply(p_mat, c(1,2,4), sum), FUN = "*") #n_hat^(1101)
-      nhat_10 = sweep(p_mat, MARGIN = c(1,2,3), n_mat[,,-3,3] / apply(p_mat, c(1,2,3), sum), FUN = "*") #n_hat^(1110)
-      nhat_00 = sweep(p_mat, MARGIN = c(1,2), n_mat[,,3,3] / apply(p_mat, c(1,2), sum), FUN = "*") #n_hat^(1100)
+      n11_hat = n_mat[,,-3,-3]
+      n01_hat = sweep(p_01, MARGIN = c(1,2,4), n_mat[,,3,-3], "*") # sum P(Y1 | x, Y2, delta1 = 0, delta2 = 1)
+      n10_hat = sweep(p_10, MARGIN = c(1,2,3), n_mat[,,-3,3], "*") # sum P(Y2 | x, Y1, delta1 = 1, delta2 = 0)
+      n00_hat = sweep(p_00, MARGIN = c(1,2), n_mat[,,3,3], "*") # sum P(Y1, Y2 | x, delta1 = delta2 = 0)
       
-      nhat_01[is.nan(nhat_01)] <- 0
-      nhat_10[is.nan(nhat_10)] <- 0
-      nhat_00[is.nan(nhat_00)] <- 0
+      n_hat = n11_hat + n01_hat + n10_hat + n00_hat # \hat N(x1, x2, y1, y2)
       
-      p_mat2 = (nhat_11 + nhat_01 + nhat_10 + nhat_00) / n_B
+      Py_x = sweep(n_hat, MARGIN = c(1,2), apply(n_hat, c(1, 2), sum), "/") # P(Y1, Y2 | x)
       
-      # print(norm(p_mat2 - p_mat, "2"))
-      if(norm(p_mat2 - p_mat, "2") < 10^(-3)) break
-      else p_mat = p_mat2
+      n1p_hat = n11_hat + n10_hat
+      n0p_hat = n01_hat + n00_hat
+      Pdel1_xy = apply(n1p_hat, c(1,2,3), sum) / apply(n_hat, c(1,2,3), sum) # P(delta1 = 1 | x, y1)
+      
+      np1_hat = n11_hat + n01_hat
+      np0_hat = n10_hat + n00_hat
+      Pdel2_xy = apply(np1_hat, c(1,2,4), sum) / apply(n_hat, c(1,2,4), sum) # P(delta2 = 1 | x, y2)
+      
+      # P(y1 | x, y2, delta1 = 0, delta2 = 1) \propto 
+      # P(del1 = 0 | x, y1) * P(del2 = 1 | x, y2) * p(y1, y2 | x)
+      p_01_new = sweep(Py_x, MARGIN = c(1,2,3), (1 - Pdel1_xy), "*")
+      p_01_new = sweep(p_01_new, MARGIN = c(1,2,4), Pdel2_xy, "*")
+      p_01_new = sweep(p_01_new, MARGIN = c(1,2,4), apply(p_01_new, c(1,2,4), sum), "/")
+      
+      # P(y2 | x, y1, delta1 = 1, delta2 = 0) \propto 
+      # P(del1 = 1 | x, y1) * P(del2 = 0 | x, y2) * p(y1, y2 | x)
+      p_10_new = sweep(Py_x, MARGIN = c(1,2,3), Pdel1_xy, "*")
+      p_10_new = sweep(p_10_new, MARGIN = c(1,2,4), (1 - Pdel2_xy), "*")
+      p_10_new = sweep(p_10_new, MARGIN = c(1,2,3), apply(p_10_new, c(1,2,3), sum), "/")
+      
+      # P(y1, y2 | x, delta1 = 0, delta2 = 0) \propto 
+      # P(del1 = 0 | x, y1) * P(del2 = 0 | x, y2) * p(y1, y2 | x)
+      p_00_new = sweep(Py_x, MARGIN = c(1,2,3), (1 - Pdel1_xy), "*")
+      p_00_new = sweep(p_00_new, MARGIN = c(1,2,4), (1 - Pdel2_xy), "*")
+      p_00_new = sweep(p_00_new, MARGIN = c(1,2), apply(p_00_new, c(1,2), sum), "/")
+      
+      # If # of (x1, x2 & (y1 = NA | y2 = NA)) = 0, we ignore the associated probs.
+      p_01_new[is.na(p_01_new)] = 0
+      p_10_new[is.na(p_10_new)] = 0
+      p_00_new[is.na(p_00_new)] = 0
+      
+      diff = norm(p_01_new - p_01, "2") + norm(p_10_new - p_10, "2") +
+        norm(p_00_new - p_00, "2")
+      print(diff)
+      if(diff < 10^(-3)){
+        break
+      } 
+      else{
+        p_01 = p_01_new
+        p_10 = p_10_new
+        p_00 = p_00_new
+      }
     }
+    p_01 = p_01_new
+    p_10 = p_10_new
+    p_00 = p_00_new
     
-    p_arr = array(1, dim = dim(n_mat[,,-3,-3])) / length(n_mat[,,-3,-3])
-    
-    p_01 = array(1, dim = c(2, 2, 4, 4)) / 2
-    p_10 = array(1, dim = c(2, 2, 4, 4)) / 2
-    p_00 = array(1, dim = c(2, 2, 4, 4)) / 4
-    
-    p_00[,,1,1]
-    
-    # plot(c(table(data.frame(cbind(X[train_idx,][bstp_idx,], Y_ogn[train_idx,][bstp_idx,]))) / n_B),
-    #      c(p_mat)); abline(0,1)
-    
-    # plot(c(n_mat[,,-3,-3] / sum(n_mat[,,-3,-3])), c(p_mat2)); abline(0,1)
-    # plot(c(table(data.frame(cbind(X[train_idx,][bstp_idx,], Y_ogn[train_idx,][bstp_idx,]))) / n_B),
-    #      c(n_mat[,,-3,-3] / sum(n_mat[,,-3,-3])))
-    
-    # unique(cbind(x_oob, y_oob))
     
     # Compute observed likelihood l_{obs}^{(b)} for each bag b ####
     
@@ -224,7 +251,7 @@ for(simnum in 1:SIMNUM){
         tmp = as.character(x)
         tmp1 = tmp; tmp1[4] <- "0"
         tmp2 = tmp; tmp2[4] <- "1"
-        c(phat_10[t(tmp1)], phat_10[t(tmp2)])
+        c(p_10[t(tmp1)], p_10[t(tmp2)])
       })
       z_imp_10 = z_imp_10[rep(1:nrow(z_imp_10), each = 2),]
       z_imp_10 = cbind(z_imp_10, c(fw_10))
@@ -238,7 +265,7 @@ for(simnum in 1:SIMNUM){
         tmp = as.character(x)
         tmp1 = tmp; tmp1[3] <- "0"
         tmp2 = tmp; tmp2[3] <- "1"
-        c(phat_01[t(tmp1)], phat_01[t(tmp2)])
+        c(p_01[t(tmp1)], p_01[t(tmp2)])
       })
       z_imp_01 = z_imp_01[rep(1:nrow(z_imp_01), each = 2),]
       z_imp_01 = cbind(z_imp_01, c(fw_01))
@@ -254,7 +281,7 @@ for(simnum in 1:SIMNUM){
         tmp2 = tmp; tmp2[3:4] <- c("0", "1")
         tmp3 = tmp; tmp3[3:4] <- c("1", "0")
         tmp4 = tmp; tmp4[3:4] <- c("1", "1")
-        c(phat_00[t(tmp1)], phat_00[t(tmp2)], phat_00[t(tmp3)], phat_00[t(tmp4)])
+        c(p_00[t(tmp1)], p_00[t(tmp2)], p_00[t(tmp3)], p_00[t(tmp4)])
       })
       z_imp_00 = z_imp_00[rep(1:nrow(z_imp_00), each = 4),]
       z_imp_00 = cbind(z_imp_00, c(fw_00))
