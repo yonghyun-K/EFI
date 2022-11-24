@@ -1,7 +1,7 @@
 # args <- commandArgs(trailingOnly = TRUE)
 
 # args <- c(n, n_B, B, SIMNUM, lambda)
-args <- c(2000, 1500, 100, 100, 1)
+args <- c(2000, 1500, 45, 100, 100)
 
 # Simulation  setup ####
 n = as.numeric(args[1])
@@ -76,8 +76,8 @@ for(simnum in 1:SIMNUM){
                      nc = 5)
   
   for(b in 1:B){
-    select_x = sample(1:p, q, replace = F)
-    # select_x = combn(p, q)[,(b+44) %% 45 + 1]
+    # select_x = sample(1:p, q, replace = F)
+    select_x = combn(p, q)[,(b+44) %% 45 + 1]
     # select_x = c(1, 2)
     # select_x = c(3, 4)
     
@@ -153,7 +153,7 @@ for(simnum in 1:SIMNUM){
       
       diff = norm(p_01_new - p_01, "2") + norm(p_10_new - p_10, "2") +
         norm(p_00_new - p_00, "2")
-      print(diff)
+      # print(diff)
       if(diff < 10^(-3)){
         break
       } 
@@ -167,6 +167,7 @@ for(simnum in 1:SIMNUM){
     p_10 = p_10_new
     p_00 = p_00_new
     
+    p_mat = n_hat / nrow(x_b)
     
     # Compute observed likelihood l_{obs}^{(b)} for each bag b ####
     
@@ -176,18 +177,20 @@ for(simnum in 1:SIMNUM){
     z_oob_10 = z_oob[!is.na(z_oob[,3]) & is.na(z_oob[,4]), ]
     z_oob_00 = z_oob[is.na(z_oob[,3]) & is.na(z_oob[,4]), ]
     
-    l_11 = apply(z_oob_11, 1, function(x) log(p_mat[t(as.character(x))]))
+    l_11 = apply(z_oob_11, 1, function(x) log(p_mat[t(as.character(x))] * Pdel1_xy[t(as.character(x[-4]))] * Pdel2_xy[t(as.character(x[-3]))] ))
     l_01 = apply(z_oob_01, 1, function(x) {
       tmp = as.character(x)
       tmp1 = tmp; tmp1[3] <- "0"
       tmp2 = tmp; tmp2[3] <- "1"
-      log(p_mat[t(tmp1)] + p_mat[t(tmp2)])
+      log(p_mat[t(tmp1)] * (1 - Pdel1_xy[t(tmp1[-4])]) * Pdel2_xy[t(tmp1[-3])] + 
+            p_mat[t(tmp2)] * (1 - Pdel1_xy[t(tmp2[-4])]) * Pdel2_xy[t(tmp2[-3])])
     })
     l_10 = apply(z_oob_10, 1, function(x) {
       tmp = as.character(x)
       tmp1 = tmp; tmp1[4] <- "0"
       tmp2 = tmp; tmp2[4] <- "1"
-      log(p_mat[t(tmp1)] + p_mat[t(tmp2)])
+      log(p_mat[t(tmp1)] * Pdel1_xy[t(tmp1[-4])] * (1 - Pdel2_xy[t(tmp1[-3])]) + 
+            p_mat[t(tmp2)] * Pdel1_xy[t(tmp2[-4])] * (1 - Pdel2_xy[t(tmp2[-3])]))
     })
     l_00 = apply(z_oob_00, 1, function(x) {
       tmp = as.character(x)
@@ -195,7 +198,11 @@ for(simnum in 1:SIMNUM){
       tmp2 = tmp; tmp2[3:4] <- c("0", "1")
       tmp3 = tmp; tmp3[3:4] <- c("1", "0")
       tmp4 = tmp; tmp4[3:4] <- c("1", "1")
-      log(p_mat[t(tmp1)] + p_mat[t(tmp2)] + p_mat[t(tmp3)]+ p_mat[t(tmp4)])
+      log(p_mat[t(tmp1)] * (1 - Pdel1_xy[t(tmp1[-4])]) * (1 - Pdel2_xy[t(tmp1[-3])]) + 
+            p_mat[t(tmp2)] * (1 - Pdel1_xy[t(tmp2[-4])]) * (1 - Pdel2_xy[t(tmp2[-3])]) +
+            p_mat[t(tmp3)] * (1 - Pdel1_xy[t(tmp3[-4])]) * (1 - Pdel2_xy[t(tmp3[-3])]) +
+            p_mat[t(tmp4)] * (1 - Pdel1_xy[t(tmp4[-4])]) * (1 - Pdel2_xy[t(tmp4[-3])]))
+      
     })
     
     l_obs = sum(c(l_11, l_01, l_10, l_00)) / nrow(z_oob) # observed likelihood
@@ -226,8 +233,8 @@ for(simnum in 1:SIMNUM){
       # print(paste("select_x =", select_x[1], select_x[2]))
       # print(paste("expl_obs =", expl_obs))
     }
-    # print(paste("select_x =", select_x[1], select_x[2]))
-    # print(paste("expl_obs =", expl_obs))
+    print(paste("select_x =", select_x[1], select_x[2]))
+    print(paste("expl_obs =", expl_obs))
     
     # bstp_idx_B = cbind(bstp_idx_B, bstp_idx)
     
