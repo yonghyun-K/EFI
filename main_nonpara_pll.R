@@ -1,45 +1,54 @@
-# args <- commandArgs(trailingOnly = TRUE)
+args <- commandArgs(trailingOnly = TRUE)
 
 # args <- c(n, n_B, B, SIMNUM, lambda)
-args <- c(2000, 1500, 100, 100, 100)
+# args <- c(2000, 1500, 100, 100, 100)
+
+library(foreach)
+library(doParallel)
+
+cores=round(detectCores() / 2)
+print(paste("cores =", cores))
+cl <- makeCluster(cores) #not to overload your computer
+registerDoParallel(cl)
 
 # Simulation  setup ####
 n = as.numeric(args[1])
-p = 2
+p = 10
 q = 2
 n_B = as.numeric(args[2])
 B = as.numeric(args[3])
 SIMNUM = as.numeric(args[4])
-res1 = NULL
-res2 = NULL
+
 set.seed(1)
 
-for(simnum in 1:SIMNUM){
+p_x = c(0.3, 0.25, 0.25, 0.2)
+p_Y1 = c(0.2, 0.3, 0.6, 0.8)
+theta1 = sum(p_x * p_Y1)
+
+p_Y2 = c((0.8 + p_Y1[1]) / 2, 0.8 * p_Y1[2] + 0.1, 0.9 - 0.5 * p_Y1[3], 0.6)
+theta2 = sum(p_x * p_Y2)
+
+theta = c(theta1, theta2)
+
+res = foreach(simnum = 1:SIMNUM, .combine = rbind) %dopar% {
+# for(simnum in 1:SIMNUM){
   print(simnum)
   
   # Generate X and Y ####
-  p_x = c(0.3, 0.25, 0.25, 0.2)
+  
   X = matrix(rep(1:4, n * p)[rmultinom(n * p, 1, p_x) == 1], nr = n, nc = p)
   colnames(X) <- paste("X", 1:p, sep = "")
   # table(X) / n
   
   # p_Y1 = c(0.4, 0.3, 0.4, 0.8)
-  p_Y1 = c(0.2, 0.3, 0.6, 0.8)
+  
   p1 = p_Y1[X[,1]]
   Y1 = rbinom(n, 1, p1)
-  theta1 = sum(p_x * p_Y1)
   
   # p2 = c((0.8 + Y1) / 2, 0.8 * Y1 + 0.1, 0.9 - 0.5 * Y1, 0.6)[X[,1]]
   
   p2 = rowSums(cbind((0.8 + Y1) / 2, 0.8 * Y1 + 0.1, 0.9 - 0.5 * Y1, 0.6) * model.matrix(~ 0 + as.factor(X[,1]))) 
   Y2 = rbinom(n, 1, p2)
-  
-  # cor(X[,1], Y2) / cor(X[,1], Y1)
-  
-  p_Y2 = c((0.8 + p_Y1[1]) / 2, 0.8 * p_Y1[2] + 0.1, 0.9 - 0.5 * p_Y1[3], 0.6)
-  theta2 = sum(p_x * p_Y2)
-  
-  theta = c(theta1, theta2)
   
   # p_delta1 = X[,1] / 5 + 1 / 5
   p_delta1 = X[,1] / 8 + 0.5
@@ -110,10 +119,8 @@ for(simnum in 1:SIMNUM){
     p_01 = array(1, dim = c(4, 4, 2, 2)) / 2 # P(Y1 | x1, x2, y2, delta1 = 0, delta2 = 1)
     p_10 = array(1, dim = c(4, 4, 2, 2)) / 2 # P(Y2 | x1, x2, y1, delta1 = 1, delta2 = 0)
     p_00 = array(1, dim = c(4, 4, 2, 2)) / 4 # P(Y1, Y2 | x1, x2, delta1 = 0, delta2 = 0)
-
+    
     while(T){
-      
-      # n11_hat = eval(parse(text = paste("n_mat[", paste(rep(",", q), collapse = ""), "-3,-3]")))
       n11_hat = n_mat[,,-3,-3]
       n01_hat = sweep(p_01, MARGIN = c(1,2,4), n_mat[,,3,-3], "*") # sum P(Y1 | x, Y2, delta1 = 0, delta2 = 1)
       n10_hat = sweep(p_10, MARGIN = c(1,2,3), n_mat[,,-3,3], "*") # sum P(Y2 | x, Y1, delta1 = 1, delta2 = 0)
@@ -321,9 +328,12 @@ for(simnum in 1:SIMNUM){
   
   theta_cc = colMeans(y, na.rm = T)
   
-  res1 = rbind(res1, c(Full = theta_full[1], CC = theta_cc[1], FHDI = theta_prop[1]))
-  res2 = rbind(res2, c(Full = theta_full[2], CC = theta_cc[2], FHDI = theta_prop[2]))
+  c(Full = theta_full[1], CC = theta_cc[1], FHDI = theta_prop[1],
+    Full = theta_full[2], CC = theta_cc[2], FHDI = theta_prop[2])
 }
+
+res1 = res[,1:3]
+res2 = res[,4:6]
 
 # Summary table ####
 BIAS = colMeans(res1 - theta1)
@@ -341,6 +351,3 @@ RMSE = apply(res2 - theta2, 2, function(x) sqrt(mean(x^2)))
 tmp_tbl <- round(cbind(BIAS = BIAS, SE = SE, RMSE = RMSE), 4)
 tmp_tbl
 xtable::xtable(tmp_tbl, digits = 4)
-
-
-plot(res1[,3])
