@@ -1,11 +1,11 @@
 # args <- commandArgs(trailingOnly = TRUE)
 
 # args <- c(n, n_B, B, SIMNUM, lambda)
-args <- c(2000, 1500, 100, 100, 100)
+args <- c(20000, 15000, 100, 100, 100)
 
 # Simulation  setup ####
 n = as.numeric(args[1])
-p = 2
+p = 10
 q = 2
 n_B = as.numeric(args[2])
 B = as.numeric(args[3])
@@ -42,12 +42,12 @@ for(simnum in 1:SIMNUM){
   theta = c(theta1, theta2)
   
   # p_delta1 = X[,1] / 5 + 1 / 5
-  p_delta1 = X[,1] / 8 + 0.5
+  # p_delta1 = X[,1] / 8 + 0.5
   # p_delta1 = X[,1] / 25 + 0.7
-  p_delta2 = X[,1] / 6 + 1 / 3
+  # p_delta2 = X[,1] / 6 + 1 / 3
   
-  # p_delta1 = 1 / (1 + exp(-(2 + X[,1] - X[,5]))) # 0.8
-  # p_delta2 = 1 / (1 + exp(-(-1 + X[,1] + X[,2] - X[,3]))) # 0.7
+  p_delta1 = 1 / (1 + exp(-(2 + X[,1] - X[,5]))) # 0.8
+  p_delta2 = 1 / (1 + exp(-(-1 + X[,1] + X[,2] - X[,3]))) # 0.7
   
   # p_delta1 = 0.8
   # p_delta2 = 0.7
@@ -130,7 +130,7 @@ for(simnum in 1:SIMNUM){
       np1_hat = n11_hat + n01_hat
       np0_hat = n10_hat + n00_hat
       Pdel2_xy = apply(np1_hat, c(1,2,4), sum) / apply(n_hat, c(1,2,4), sum) # P(delta2 = 1 | x, y2)
-      
+
       # P(y1 | x, y2, delta1 = 0, delta2 = 1) \propto 
       # P(del1 = 0 | x, y1) * P(del2 = 1 | x, y2) * p(y1, y2 | x)
       p_01_new = sweep(Py_x, MARGIN = c(1,2,3), (1 - Pdel1_xy), "*")
@@ -154,11 +154,13 @@ for(simnum in 1:SIMNUM){
       p_10_new[is.na(p_10_new)] = 0
       p_00_new[is.na(p_00_new)] = 0
       
-      diff = norm(p_01_new - p_01, "2") + norm(p_10_new - p_10, "2") +
-        norm(p_00_new - p_00, "2")
+      p_tmp = cbind(p_01, p_10, p_00)
+      p_tmp_new = cbind(p_01_new, p_10_new, p_00_new)
+      
+      diff = norm(p_tmp_new - p_tmp, "2")
       # print(diff)
-      # if(diff < 10^(-3)){
-      if(diff < 10^(-1)){
+      if(diff < 10^(-3)){
+      # if(diff < 10^(-1)){
         break
       } 
       else{

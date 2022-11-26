@@ -1,12 +1,12 @@
 args <- commandArgs(trailingOnly = TRUE)
 
 # args <- c(n, n_B, B, SIMNUM, lambda)
-# args <- c(2000, 1500, 100, 100, 100)
+# args <- c(2000, 1500, 45, 100, 100)
 
 library(foreach)
 library(doParallel)
 
-cores=round(detectCores() / 2)
+cores=round(100)
 print(paste("cores =", cores))
 cl <- makeCluster(cores) #not to overload your computer
 registerDoParallel(cl)
@@ -19,12 +19,13 @@ n_B = as.numeric(args[2])
 B = as.numeric(args[3])
 SIMNUM = as.numeric(args[4])
 
-set.seed(1)
+# set.seed(1)
 
 p_x = c(0.3, 0.25, 0.25, 0.2)
 p_Y1 = c(0.2, 0.3, 0.6, 0.8)
 theta1 = sum(p_x * p_Y1)
 
+# p_Y2 = c(0.8 / 2, 0.1, 0.9, 0.6)
 p_Y2 = c((0.8 + p_Y1[1]) / 2, 0.8 * p_Y1[2] + 0.1, 0.9 - 0.5 * p_Y1[3], 0.6)
 theta2 = sum(p_x * p_Y2)
 
@@ -47,16 +48,17 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind) %dopar% {
   
   # p2 = c((0.8 + Y1) / 2, 0.8 * Y1 + 0.1, 0.9 - 0.5 * Y1, 0.6)[X[,1]]
   
-  p2 = rowSums(cbind((0.8 + Y1) / 2, 0.8 * Y1 + 0.1, 0.9 - 0.5 * Y1, 0.6) * model.matrix(~ 0 + as.factor(X[,1]))) 
+  # p2 = p_Y2[X[,2]]
+   p2 = rowSums(cbind((0.8 + Y1) / 2, 0.8 * Y1 + 0.1, 0.9 - 0.5 * Y1, 0.6) * model.matrix(~ 0 + as.factor(X[,1])))
   Y2 = rbinom(n, 1, p2)
   
   # p_delta1 = X[,1] / 5 + 1 / 5
-  p_delta1 = X[,1] / 8 + 0.5
+  #  p_delta1 = X[,1] / 8 + 0.5
   # p_delta1 = X[,1] / 25 + 0.7
-  p_delta2 = X[,1] / 6 + 1 / 3
+  #  p_delta2 = X[,1] / 6 + 1 / 3
   
-  # p_delta1 = 1 / (1 + exp(-(2 + X[,1] - X[,5]))) # 0.8
-  # p_delta2 = 1 / (1 + exp(-(-1 + X[,1] + X[,2] - X[,3]))) # 0.7
+  p_delta1 = 1 / (1 + exp(-(X[,10] + X[,1] - X[,5]))) # 0.8
+  p_delta2 = 1 / (1 + exp(-(-1 + X[,1] + X[,2] - X[,3]))) # 0.7
   
   # p_delta1 = 0.8
   # p_delta2 = 0.7
@@ -87,7 +89,7 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind) %dopar% {
   
   for(b in 1:B){
     select_x = sample(1:p, q, replace = F)
-    # select_x = combn(p, q)[,(b+44) %% 45 + 1]
+    #  select_x = combn(p, q)[,(b+44) %% 45 + 1]
     # select_x = c(1, 2)
     # select_x = c(3, 4)
     
@@ -161,11 +163,13 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind) %dopar% {
       p_10_new[is.na(p_10_new)] = 0
       p_00_new[is.na(p_00_new)] = 0
       
-      diff = norm(p_01_new - p_01, "2") + norm(p_10_new - p_10, "2") +
-        norm(p_00_new - p_00, "2")
+      p_tmp = cbind(p_01, p_10, p_00)
+      p_tmp_new = cbind(p_01_new, p_10_new, p_00_new)
+      
+      diff = norm(p_tmp_new - p_tmp, "2")
       # print(diff)
-      # if(diff < 10^(-3)){
-      if(diff < 10^(-1)){
+      if(diff < 10^(-4)){
+      #  if(diff < 10^(-1)){
         break
       } 
       else{
