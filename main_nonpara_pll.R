@@ -5,6 +5,8 @@ args <- commandArgs(trailingOnly = TRUE)
 
 library(foreach)
 library(doParallel)
+library(xtable)
+library(mice, warn.conflicts = FALSE)
 
 cores=round(100)
 print(paste("cores =", cores))
@@ -22,16 +24,23 @@ SIMNUM = as.numeric(args[4])
 # set.seed(1)
 
 p_x = c(0.3, 0.25, 0.25, 0.2)
-p_Y1 = c(0.2, 0.3, 0.6, 0.8)
-theta1 = sum(p_x * p_Y1)
+print("p_Y1")
+(p_Y1 = c(0.2, 0.3, 0.6, 0.8))
+print("theta1")
+(theta1 = sum(p_x * p_Y1))
 
-# p_Y2 = c(0.8 / 2, 0.1, 0.9, 0.6)
-p_Y2 = c((0.8 + p_Y1[1]) / 2, 0.8 * p_Y1[2] + 0.1, 0.9 - 0.5 * p_Y1[3], 0.6)
-theta2 = sum(p_x * p_Y2)
+print("p_Y2")
+# (p_Y2 = c(0.4, 0.4, 0.6, 0.6))
+(p_Y2 = c((0.8 + p_Y1[1]) / 2, 0.8 * p_Y1[2] + 0.1, 0.9 - 0.5 * p_Y1[3], 0.6))
+print("theta2")
+(theta2 = sum(p_x * p_Y2))
+
+print("p2 = p_Y2[X[,1]]")
 
 theta = c(theta1, theta2)
 
-res = foreach(simnum = 1:SIMNUM, .combine = rbind) %dopar% {
+res = foreach(simnum = 1:SIMNUM, .combine = rbind,
+              .packages = c("mice")) %dopar% {
 # for(simnum in 1:SIMNUM){
   print(simnum)
   
@@ -46,10 +55,8 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind) %dopar% {
   p1 = p_Y1[X[,1]]
   Y1 = rbinom(n, 1, p1)
   
-  # p2 = c((0.8 + Y1) / 2, 0.8 * Y1 + 0.1, 0.9 - 0.5 * Y1, 0.6)[X[,1]]
-  
-  # p2 = p_Y2[X[,2]]
-   p2 = rowSums(cbind((0.8 + Y1) / 2, 0.8 * Y1 + 0.1, 0.9 - 0.5 * Y1, 0.6) * model.matrix(~ 0 + as.factor(X[,1])))
+  # p2 = p_Y2[X[,1]]
+  p2 = rowSums(cbind((0.8 + Y1) / 2, 0.8 * Y1 + 0.1, 0.9 - 0.5 * Y1, 0.6) * model.matrix(~ 0 + as.factor(X[,1])))
   Y2 = rbinom(n, 1, p2)
   
   # p_delta1 = X[,1] / 5 + 1 / 5
@@ -57,8 +64,9 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind) %dopar% {
   # p_delta1 = X[,1] / 25 + 0.7
   #  p_delta2 = X[,1] / 6 + 1 / 3
   
-  p_delta1 = 1 / (1 + exp(-(X[,10] + X[,1] - X[,5]))) # 0.8
-  p_delta2 = 1 / (1 + exp(-(-1 + X[,1] + X[,2] - X[,3]))) # 0.7
+  p_delta1 = 1 / (1 + exp(-(X[,10] + X[,1] - 5 * Y1))) # 0.8
+  
+  p_delta2 = 1 / (1 + exp(-(-1 + X[,1] + X[,2] - 4 * Y2))) # 0.7
   
   # p_delta1 = 0.8
   # p_delta2 = 0.7
@@ -79,6 +87,13 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind) %dopar% {
   train_idx = 1:n
   x = X[train_idx,]
   y = Y[train_idx,]
+  
+  # MICE ####
+  imp <- mice(cbind(x, y), printFlag = FALSE)
+  y1_mice <- with(imp, lm(Y1~1))
+  y2_mice <- with(imp, lm(Y2~1))
+  theta_mice = c(summary(pool(y1_mice))$estimate,
+                 summary(pool(y2_mice))$estimate)
   
   w_B = NULL
   # bstp_idx_B = NULL
@@ -332,12 +347,12 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind) %dopar% {
   
   theta_cc = colMeans(y, na.rm = T)
   
-  c(Full = theta_full[1], CC = theta_cc[1], FHDI = theta_prop[1],
-    Full = theta_full[2], CC = theta_cc[2], FHDI = theta_prop[2])
+  c(Full = theta_full[1], CC = theta_cc[1], MICE = theta_mice[1], FHDI = theta_prop[1],
+    Full = theta_full[2], CC = theta_cc[2], MICE = theta_mice[2], FHDI = theta_prop[2])
 }
 
-res1 = res[,1:3]
-res2 = res[,4:6]
+res1 = res[,1:(ncol(res) / 2)]
+res2 = res[,(ncol(res) / 2 + 1): ncol(res)]
 
 # Summary table ####
 BIAS = colMeans(res1 - theta1)
