@@ -63,7 +63,7 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
   #  p_delta1 = X[,1] / 8 + 0.5
   # p_delta1 = X[,1] / 25 + 0.7
   #  p_delta2 = X[,1] / 6 + 1 / 3
-  
+
   p_delta1 = 1 / (1 + exp(-(X[,10] + X[,1] - 5 * Y1))) # 0.8
   
   p_delta2 = 1 / (1 + exp(-(-1 + X[,1] + X[,2] - 4 * Y2))) # 0.7
