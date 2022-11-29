@@ -60,9 +60,9 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
   Y2 = rbinom(n, 1, p2)
   
   # p_delta1 = X[,1] / 5 + 1 / 5
-  #  p_delta1 = X[,1] / 8 + 0.5
+   # p_delta1 = X[,1] / 8 + 0.5
   # p_delta1 = X[,1] / 25 + 0.7
-  #  p_delta2 = X[,1] / 6 + 1 / 3
+   # p_delta2 = X[,1] / 6 + 1 / 3
 
   p_delta1 = 1 / (1 + exp(-(X[,10] + X[,1] - 5 * Y1))) # 0.8
   
@@ -89,11 +89,18 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
   y = Y[train_idx,]
   
   # MICE ####
-  imp <- mice(cbind(x, y), printFlag = FALSE)
+  imp <- mice(cbind(X, Y), printFlag = FALSE)
   y1_mice <- with(imp, lm(Y1~1))
   y2_mice <- with(imp, lm(Y2~1))
   theta_mice = c(summary(pool(y1_mice))$estimate,
                  summary(pool(y2_mice))$estimate)
+  
+  comp_mice = complete(imp,1)
+  X_mice = comp_mice[,1:p]
+  y_mice = comp_mice[,(p+1):ncol(comp_mice)]
+  
+
+  
   
   w_B = NULL
   # bstp_idx_B = NULL
@@ -107,6 +114,12 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
     #  select_x = combn(p, q)[,(b+44) %% 45 + 1]
     # select_x = c(1, 2)
     # select_x = c(3, 4)
+    
+    n_mat_true = table(data.frame(cbind(X_mice[,select_x], y_mice, delta)), useNA = "ifany")
+    
+    p_01_true = sweep(n_mat_true[,,,,1,2], MARGIN = c(1,2,4), apply(n_mat_true[,,,,1,2], MARGIN = c(1,2,4), sum), "/")
+    p_10_true = sweep(n_mat_true[,,,,2,1], MARGIN = c(1,2,3), apply(n_mat_true[,,,,2,1], MARGIN = c(1,2,3), sum), "/")
+    p_00_true = sweep(n_mat_true[,,,,1,1], MARGIN = c(1,2), apply(n_mat_true[,,,,1,1], MARGIN = c(1,2), sum), "/")
     
     bstp_idx = sample(1:length(train_idx), n_B, replace = TRUE)
     x_b = x[bstp_idx,select_x]
@@ -133,10 +146,19 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
     # n_mat[,,3,-3, drop = F] # n^(1101)
     # p_mat[,,1,] * n_mat[,,3,-3] / apply(p_mat, c(1,2,4), sum)
     
-    p_01 = array(1, dim = c(4, 4, 2, 2)) / 2 # P(Y1 | x1, x2, y2, delta1 = 0, delta2 = 1)
-    p_10 = array(1, dim = c(4, 4, 2, 2)) / 2 # P(Y2 | x1, x2, y1, delta1 = 1, delta2 = 0)
-    p_00 = array(1, dim = c(4, 4, 2, 2)) / 4 # P(Y1, Y2 | x1, x2, delta1 = 0, delta2 = 0)
+    p_01_true[is.na(p_01_true)] = 0
+    p_10_true[is.na(p_10_true)] = 0
+    p_00_true[is.na(p_00_true)] = 0
     
+    p_01 = p_01_true
+    p_10 = p_10_true
+    p_00 = p_00_true
+    
+    # p_01 = array(1, dim = c(4, 4, 2, 2)) / 2 # P(Y1 | x1, x2, y2, delta1 = 0, delta2 = 1)
+    # p_10 = array(1, dim = c(4, 4, 2, 2)) / 2 # P(Y2 | x1, x2, y1, delta1 = 1, delta2 = 0)
+    # p_00 = array(1, dim = c(4, 4, 2, 2)) / 4 # P(Y1, Y2 | x1, x2, delta1 = 0, delta2 = 0)
+    
+    diff2 = 10000
     while(T){
       n11_hat = n_mat[,,-3,-3]
       n01_hat = sweep(p_01, MARGIN = c(1,2,4), n_mat[,,3,-3], "*") # sum P(Y1 | x, Y2, delta1 = 0, delta2 = 1)
@@ -183,14 +205,17 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
       
       diff = norm(p_tmp_new - p_tmp, "2")
       # print(diff)
-      if(diff < 10^(-4)){
+      #if(diff < 10^(-4)){
       #  if(diff < 10^(-1)){
-        break
-      } 
+      if(diff2 <= diff | diff2 < 10^(-4)){
+          #  if(diff < 10^(-1)){
+          break
+        } 
       else{
         p_01 = p_01_new
         p_10 = p_10_new
         p_00 = p_00_new
+        diff2 = diff
       }
     }
     p_01 = p_01_new

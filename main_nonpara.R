@@ -46,11 +46,11 @@ for(simnum in 1:SIMNUM){
   # p_delta1 = X[,1] / 25 + 0.7
   # p_delta2 = X[,1] / 6 + 1 / 3
   
-  p_delta1 = 1 / (1 + exp(-(2 + X[,1] - X[,5]))) # 0.8
-  p_delta2 = 1 / (1 + exp(-(-1 + X[,1] + X[,2] - X[,3]))) # 0.7
+  # p_delta1 = 1 / (1 + exp(-(2 + X[,1] - X[,5]))) # 0.8
+  # p_delta2 = 1 / (1 + exp(-(-1 + X[,1] + X[,2] - X[,3]))) # 0.7
   
-  # p_delta1 = 0.8
-  # p_delta2 = 0.7
+  p_delta1 = 0.8
+  p_delta2 = 0.7
   
   delta1 = rbinom(n, 1, p_delta1)
   delta2 = rbinom(n, 1, p_delta2)
@@ -107,6 +107,12 @@ for(simnum in 1:SIMNUM){
     # n_mat[,,3,-3, drop = F] # n^(1101)
     # p_mat[,,1,] * n_mat[,,3,-3] / apply(p_mat, c(1,2,4), sum)
     
+    n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany")
+    
+    p_01 = p_01_true = sweep(n_mat_true[,,,,1,2], MARGIN = c(1,2,4), apply(n_mat_true[,,,,1,2], MARGIN = c(1,2,4), sum), "/")
+    p_10 = p_10_true = sweep(n_mat_true[,,,,2,1], MARGIN = c(1,2,3), apply(n_mat_true[,,,,2,1], MARGIN = c(1,2,3), sum), "/")
+    p_00 = p_00_true = sweep(n_mat_true[,,,,1,1], MARGIN = c(1,2), apply(n_mat_true[,,,,1,1], MARGIN = c(1,2), sum), "/")
+
     p_01 = array(1, dim = c(4, 4, 2, 2)) / 2 # P(Y1 | x1, x2, y2, delta1 = 0, delta2 = 1)
     p_10 = array(1, dim = c(4, 4, 2, 2)) / 2 # P(Y2 | x1, x2, y1, delta1 = 1, delta2 = 0)
     p_00 = array(1, dim = c(4, 4, 2, 2)) / 4 # P(Y1, Y2 | x1, x2, delta1 = 0, delta2 = 0)
@@ -158,7 +164,7 @@ for(simnum in 1:SIMNUM){
       p_tmp_new = cbind(p_01_new, p_10_new, p_00_new)
       
       diff = norm(p_tmp_new - p_tmp, "2")
-      # print(diff)
+      print(diff)
       if(diff < 10^(-3)){
       # if(diff < 10^(-1)){
         break
