@@ -90,7 +90,8 @@ for (b in 1:B) {
 res = foreach(lambda = lambda_vec, .combine = rbind,
               .packages = c("mice")) %dopar% {
   print(lambda)
-  res_K = rep(0, K)
+  res_K1 = rep(0, K)
+  res_K2 = rep(0, K)
   
   cuts = cut(sample(1:n, n), breaks = 10, labels = FALSE)
   for (k in 1:K) {
@@ -279,6 +280,8 @@ res = foreach(lambda = lambda_vec, .combine = rbind,
       
       l_obs = sum(c(l_11, l_01, l_10, l_00)) / nrow(z_oob) # observed likelihood
       l_obs
+      
+      if(is.nan(l_obs)) next()
       
       expl_obs = exp(lambda * l_obs)
       w_B = c(w_B, expl_obs)
