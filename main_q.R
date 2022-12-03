@@ -146,7 +146,8 @@ res = foreach(simnum = 1:SIMNUM,
 
                   # table(data.frame(cbind(X[,select_x], Y_ogn)), useNA = "ifany")
                   
-                  n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany")
+                  n_mat_true = table(data.frame(cbind(X_mice[,select_x], y_mice, delta)), useNA = "ifany")
+                  # n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany")
                   # summary(data.frame(cbind(X[,select_x], Y_ogn, delta)))
 
                   expand_txt = paste(paste(rep("c(1,0)", q)), collapse = ",")
@@ -248,10 +249,10 @@ res = foreach(simnum = 1:SIMNUM,
                     
                     diff = norm(p_tmp_new - p_tmp, "2")
                     # print(diff)
-                    #if(diff < 10^(-4)){
+                    if(diff < 10^(-4)){
                     #  if(diff < 10^(-1)){
                     # if(diff2 < 10^(-1)){
-                      if(T){
+                      # if(T){
                       #  if(diff < 10^(-1)){
                       break
                     } 
