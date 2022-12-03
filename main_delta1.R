@@ -1,7 +1,7 @@
 args <- commandArgs(trailingOnly = TRUE)
 
 # args <- c(n, n_B, B, SIMNUM, lambda)
-# args <- c(2000, 1500, 45, 100, 100)
+# args <- c(2000, 1500, 100, 100, 100, 100)
 
 library(foreach)
 library(doParallel)
@@ -15,27 +15,41 @@ registerDoParallel(cl)
 
 # Simulation  setup ####
 n = as.numeric(args[1])
-p = 10
-q = 2
-n_B = as.numeric(args[2])
-B = as.numeric(args[3])
-SIMNUM = as.numeric(args[4])
+print(paste("n(Sample size) =", n))
 
-# set.seed(1)
+p = as.numeric(args[6])
+print(paste("p =", p))
+
+p_star = 2
+print(paste("p_star =", p_star))
+
+q = 2
+print(paste("q =", q))
+
+n_B = as.numeric(args[2])
+print(paste("n_B(Bootstrap sample size) =", n_B))
+
+B = as.numeric(args[3])
+print(paste("B(The number of bootstraps) =", B))
+
+SIMNUM = as.numeric(args[4])
+print(paste("B(The number of bootstraps) =", B))
+
+set.seed(1)
 
 p_x = c(0.3, 0.25, 0.25, 0.2)
-print("p_Y1")
-(p_Y1 = c(0.2, 0.3, 0.6, 0.8))
-print("theta1")
-(theta1 = sum(p_x * p_Y1))
+p_Y1 = c(0.2, 0.3, 0.6, 0.8)
+print(paste("p_Y1 =", paste(p_Y1, collapse = " ")))
 
-print("p_Y2")
-# (p_Y2 = c(0.4, 0.4, 0.6, 0.6))
-(p_Y2 = c((0.8 + p_Y1[1]) / 2, 0.8 * p_Y1[2] + 0.1, 0.9 - 0.5 * p_Y1[3], 0.6))
-print("theta2")
-(theta2 = sum(p_x * p_Y2))
+theta1 = sum(p_x * p_Y1)
+print(paste("theta1 =", theta1))
 
-print("p2 = p_Y2[X[,1]]")
+# p_Y2 = c(0.4, 0.4, 0.6, 0.6)
+p_Y2 = c((0.8 + p_Y1[1]) / 2, 0.8 * p_Y1[2] + 0.1, 0.9 - 0.5 * p_Y1[3], 0.6)
+print(paste("p_Y2 =", paste(p_Y2, collapse = " ")))
+
+theta2 = sum(p_x * p_Y2)
+print(paste("theta2 =", theta2))
 
 theta = c(theta1, theta2)
 
@@ -46,11 +60,16 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                 
                 # Generate X and Y ####
                 
-                X = matrix(rep(1:4, n * p)[rmultinom(n * p, 1, p_x) == 1], nr = n, nc = p)
+                # is.factor(X[,1]) == FALSE: X can be high-dimensional
+                X = matrix(rep(1:4, n * p)[rmultinom(n * p, 1, p_x) == 1], nr = n, nc = p) 
                 colnames(X) <- paste("X", 1:p, sep = "")
+                
+                
                 # table(X) / n
                 
                 # p_Y1 = c(0.4, 0.3, 0.4, 0.8)
+                
+                
                 
                 p1 = p_Y1[X[,1]]
                 Y1 = rbinom(n, 1, p1)
@@ -65,21 +84,29 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                 # p_delta2 = X[,1] / 6 + 1 / 3
                 
                 p_delta1 = 1 / (1 + exp(-(X[,10] + X[,1] - 5 * Y1))) # 0.8
+                # p_delta2 = 1 / (1 + exp(-(-1 + X[,1] + X[,2] - 4 * Y2))) # 0.7
                 
-                p_delta2 = 1 / (1 + exp(-(-1 + X[,1] + X[,2] - 4 * Y2))) # 0.7
+                # p_delta1 = 1 / (1 + exp(-(X[,10] + X[,1] - X[,5]))) # 0.8
+                # p_delta2 = 1 / (1 + exp(-(-1 + X[,1] + X[,2] - X[,3]))) # 0.7
+                
                 
                 # p_delta1 = 0.8
-                # p_delta2 = 0.7
+                p_delta2 = 1
                 
-                delta1 = rbinom(n, 1, p_delta1)
-                delta2 = rbinom(n, 1, p_delta2)
+                delta1 = factor(rbinom(n, 1, p_delta1), levels = c(0,1))
+                delta2 = factor(rbinom(n, 1, p_delta2), levels = c(0,1))
                 
-                Y_ogn = cbind(Y1, Y2)
-                theta_full = colMeans(Y_ogn)
-                delta = cbind(delta1, delta2)
+                Y_num = cbind(Y1, Y2)
                 
+                Y_ogn = data.frame(Y1 = factor(Y1, levels = c(0,1)), 
+                                   Y2 = factor(Y2, levels = c(0,1)))
+                theta_full = c(mean(Y1), mean(Y2))
+                delta = data.frame(delta1, delta2)
+                
+                # is.factor(Y[,1]) == TRUE: Y is low-dimensional and saved as factors.
                 Y = Y_ogn
                 Y[delta == 0] = NA
+                Y_num[delta == 0] = NA
                 
                 lambda = as.numeric(args[5])
                 
@@ -87,9 +114,10 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                 train_idx = 1:n
                 x = X[train_idx,]
                 y = Y[train_idx,]
+                y_num = Y_num[train_idx,]
                 
                 # MICE ####
-                imp <- mice(cbind(X, Y), printFlag = FALSE)
+                imp <- mice(cbind(X, Y_num), printFlag = FALSE)
                 y1_mice <- with(imp, lm(Y1~1))
                 y2_mice <- with(imp, lm(Y2~1))
                 theta_mice = c(summary(pool(y1_mice))$estimate,
@@ -110,13 +138,13 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                                    nc = 5)
                 
                 for(b in 1:B){
-                  select_x = sample(1:p, q, replace = F)
-                  #  select_x = combn(p, q)[,(b+44) %% 45 + 1]
+                  select_x = sample(1:p, p_star, replace = F)
+                  #  select_x = combn(p, p_star)[,(b+44) %% 45 + 1]
                   # select_x = c(1, 2)
                   # select_x = c(3, 4)
                   
                   n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany")
-                  
+                  summary(data.frame(cbind(X[,select_x], Y_ogn, delta)))
                   p_01_true = sweep(n_mat_true[,,,,1,2], MARGIN = c(1,2,4), apply(n_mat_true[,,,,1,2], MARGIN = c(1,2,4), sum), "/")
                   p_10_true = sweep(n_mat_true[,,,,2,1], MARGIN = c(1,2,3), apply(n_mat_true[,,,,2,1], MARGIN = c(1,2,3), sum), "/")
                   p_00_true = sweep(n_mat_true[,,,,1,1], MARGIN = c(1,2), apply(n_mat_true[,,,,1,1], MARGIN = c(1,2), sum), "/")
@@ -126,7 +154,7 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                   y_b = y[bstp_idx,]
                   
                   x_oob = x[!(1:length(train_idx) %in% bstp_idx),select_x]
-                  y_oob = y[!(1:length(train_idx) %in% bstp_idx),]
+                  y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),]
                   
                   # unique(cbind(x_b, y_b))
                   # unique(cbind(x_b, y_b))[complete.cases(unique(cbind(x_b, y_b))),]
@@ -134,7 +162,8 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                   # EM algorithm to compute \pi_{ijkl} ####
                   # for i, j = 1,2,3,4 and k, l = 0, 1 
                   
-                  n_mat = table(data.frame(cbind(x_b, y_b)), useNA = "ifany")
+                  n_mat = table(data.frame(cbind(x_b, y_b)), useNA = "always")
+                  n_mat = n_mat[-5,-5,,]
                   # apply(n_mat, (p+1) : (p+2), sum)
                   # apply(n_mat, 1:p, sum)
                   
@@ -146,9 +175,9 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                   # n_mat[,,3,-3, drop = F] # n^(1101)
                   # p_mat[,,1,] * n_mat[,,3,-3] / apply(p_mat, c(1,2,4), sum)
                   
-                  p_01_true[is.na(p_01_true)] = 0
-                  p_10_true[is.na(p_10_true)] = 0
-                  p_00_true[is.na(p_00_true)] = 0
+                  p_01_true[is.na(p_01_true)] = 1/2
+                  p_10_true[is.na(p_10_true)] = 1/2
+                  p_00_true[is.na(p_00_true)] = 1/4
                   
                   p_01 = p_01_true
                   p_10 = p_10_true
@@ -158,7 +187,7 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                   # p_10 = array(1, dim = c(4, 4, 2, 2)) / 2 # P(Y2 | x1, x2, y1, delta1 = 1, delta2 = 0)
                   # p_00 = array(1, dim = c(4, 4, 2, 2)) / 4 # P(Y1, Y2 | x1, x2, delta1 = 0, delta2 = 0)
                   
-                  diff2 = 10000
+                  diff2 = Inf
                   while(T){
                     n11_hat = n_mat[,,-3,-3]
                     n01_hat = sweep(p_01, MARGIN = c(1,2,4), n_mat[,,3,-3], "*") # sum P(Y1 | x, Y2, delta1 = 0, delta2 = 1)
@@ -196,9 +225,9 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                     p_00_new = sweep(p_00_new, MARGIN = c(1,2), apply(p_00_new, c(1,2), sum), "/")
                     
                     # If # of (x1, x2 & (y1 = NA | y2 = NA)) = 0, we ignore the associated probs.
-                    p_01_new[is.na(p_01_new)] = 0
-                    p_10_new[is.na(p_10_new)] = 0
-                    p_00_new[is.na(p_00_new)] = 0
+                    p_01_new[is.na(p_01_new)] = 1/2
+                    p_10_new[is.na(p_10_new)] = 1/4
+                    p_00_new[is.na(p_00_new)] = 1/4
                     
                     p_tmp = cbind(p_01, p_10, p_00)
                     p_tmp_new = cbind(p_01_new, p_10_new, p_00_new)
@@ -225,7 +254,6 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                   p_mat = n_hat / nrow(x_b)
                   
                   # Compute observed likelihood l_{obs}^{(b)} for each bag b ####
-                  
                   z_oob = cbind(x_oob, y_oob)
                   z_oob_11 = z_oob[!is.na(z_oob[,3]) & !is.na(z_oob[,4]), ]
                   z_oob_01 = z_oob[is.na(z_oob[,3]) & !is.na(z_oob[,4]), ]
@@ -233,35 +261,47 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                   z_oob_00 = z_oob[is.na(z_oob[,3]) & is.na(z_oob[,4]), ]
                   
                   l_11 = apply(z_oob_11, 1, function(x) log(p_mat[t(as.character(x))] * Pdel1_xy[t(as.character(x[-4]))] * Pdel2_xy[t(as.character(x[-3]))] ))
-                  l_01 = apply(z_oob_01, 1, function(x) {
-                    tmp = as.character(x)
-                    tmp1 = tmp; tmp1[3] <- "0"
-                    tmp2 = tmp; tmp2[3] <- "1"
-                    log(p_mat[t(tmp1)] * (1 - Pdel1_xy[t(tmp1[-4])]) * Pdel2_xy[t(tmp1[-3])] + 
-                          p_mat[t(tmp2)] * (1 - Pdel1_xy[t(tmp2[-4])]) * Pdel2_xy[t(tmp2[-3])])
-                  })
-                  l_10 = apply(z_oob_10, 1, function(x) {
-                    tmp = as.character(x)
-                    tmp1 = tmp; tmp1[4] <- "0"
-                    tmp2 = tmp; tmp2[4] <- "1"
-                    log(p_mat[t(tmp1)] * Pdel1_xy[t(tmp1[-4])] * (1 - Pdel2_xy[t(tmp1[-3])]) + 
-                          p_mat[t(tmp2)] * Pdel1_xy[t(tmp2[-4])] * (1 - Pdel2_xy[t(tmp2[-3])]))
-                  })
-                  l_00 = apply(z_oob_00, 1, function(x) {
-                    tmp = as.character(x)
-                    tmp1 = tmp; tmp1[3:4] <- c("0", "0")
-                    tmp2 = tmp; tmp2[3:4] <- c("0", "1")
-                    tmp3 = tmp; tmp3[3:4] <- c("1", "0")
-                    tmp4 = tmp; tmp4[3:4] <- c("1", "1")
-                    log(p_mat[t(tmp1)] * (1 - Pdel1_xy[t(tmp1[-4])]) * (1 - Pdel2_xy[t(tmp1[-3])]) + 
-                          p_mat[t(tmp2)] * (1 - Pdel1_xy[t(tmp2[-4])]) * (1 - Pdel2_xy[t(tmp2[-3])]) +
-                          p_mat[t(tmp3)] * (1 - Pdel1_xy[t(tmp3[-4])]) * (1 - Pdel2_xy[t(tmp3[-3])]) +
-                          p_mat[t(tmp4)] * (1 - Pdel1_xy[t(tmp4[-4])]) * (1 - Pdel2_xy[t(tmp4[-3])]))
-                    
-                  })
+                  if(nrow(z_oob_01) != 0){
+                    l_01 = apply(z_oob_01, 1, function(x) {
+                      tmp = as.character(x)
+                      tmp1 = tmp; tmp1[3] <- "0"
+                      tmp2 = tmp; tmp2[3] <- "1"
+                      log(p_mat[t(tmp1)] * (1 - Pdel1_xy[t(tmp1[-4])]) * Pdel2_xy[t(tmp1[-3])] + 
+                            p_mat[t(tmp2)] * (1 - Pdel1_xy[t(tmp2[-4])]) * Pdel2_xy[t(tmp2[-3])])
+                    })
+                  }else{
+                    l_01 = 0
+                  }
+                  if(nrow(z_oob_10) != 0){
+                    l_10 = apply(z_oob_10, 1, function(x) {
+                      tmp = as.character(x)
+                      tmp1 = tmp; tmp1[4] <- "0"
+                      tmp2 = tmp; tmp2[4] <- "1"
+                      log(p_mat[t(tmp1)] * Pdel1_xy[t(tmp1[-4])] * (1 - Pdel2_xy[t(tmp1[-3])]) + 
+                            p_mat[t(tmp2)] * Pdel1_xy[t(tmp2[-4])] * (1 - Pdel2_xy[t(tmp2[-3])]))
+                    })
+                  }else{
+                    l_10 = 0
+                  }
+                  if(nrow(z_oob_10) != 0){
+                    l_00 = apply(z_oob_00, 1, function(x) {
+                      tmp = as.character(x)
+                      tmp1 = tmp; tmp1[3:4] <- c("0", "0")
+                      tmp2 = tmp; tmp2[3:4] <- c("0", "1")
+                      tmp3 = tmp; tmp3[3:4] <- c("1", "0")
+                      tmp4 = tmp; tmp4[3:4] <- c("1", "1")
+                      log(p_mat[t(tmp1)] * (1 - Pdel1_xy[t(tmp1[-4])]) * (1 - Pdel2_xy[t(tmp1[-3])]) + 
+                            p_mat[t(tmp2)] * (1 - Pdel1_xy[t(tmp2[-4])]) * (1 - Pdel2_xy[t(tmp2[-3])]) +
+                            p_mat[t(tmp3)] * (1 - Pdel1_xy[t(tmp3[-4])]) * (1 - Pdel2_xy[t(tmp3[-3])]) +
+                            p_mat[t(tmp4)] * (1 - Pdel1_xy[t(tmp4[-4])]) * (1 - Pdel2_xy[t(tmp4[-3])]))
+                      
+                    })
+                  }else{
+                    l_00 = 0
+                  }
                   
                   l_obs = sum(c(l_11, l_01, l_10, l_00)) / nrow(z_oob) # observed likelihood
-                  l_obs 
+                  if(is.nan(l_obs)) next() 
                   
                   expl_obs = exp(lambda * l_obs)
                   
@@ -296,7 +336,7 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                   w_B = c(w_B, expl_obs)
                   
                   # Fractional Imputation step ####
-                  z_imp = cbind(x[,select_x],y)
+                  z_imp = cbind(x[,select_x],y_num)
                   # table(data.frame(z))
                   
                   z_imp_11 = z_imp[!is.na(y[,1]) & !is.na(y[,2]), ]
@@ -316,10 +356,10 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                       c(p_10[t(tmp1)], p_10[t(tmp2)])
                     })
                     z_imp_10 = z_imp_10[rep(1:nrow(z_imp_10), each = 2),]
-                    z_imp_10 = cbind(z_imp_10, c(fw_10))
+                    z_imp_10 = cbind(z_imp_10, "1" = c(fw_10))
                     z_imp_10[,"Y2"] <- rep(c(0,1), ncol(fw_10))
                   }else{
-                    z_imp_10 <- cbind(z_imp_10, z_imp_10)[,-(6:8)]
+                    z_imp_10 <- cbind(z_imp_10, "1" = integer(0))
                   }
                   
                   if(nrow(z_imp_01)!= 0){
@@ -330,10 +370,10 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                       c(p_01[t(tmp1)], p_01[t(tmp2)])
                     })
                     z_imp_01 = z_imp_01[rep(1:nrow(z_imp_01), each = 2),]
-                    z_imp_01 = cbind(z_imp_01, c(fw_01))
+                    z_imp_01 = cbind(z_imp_01, "1" = c(fw_01))
                     z_imp_01[,"Y1"] <- rep(c(0,1), ncol(fw_01))
                   }else{
-                    z_imp_01 <- cbind(z_imp_01, z_imp_01)[,-(6:8)]
+                    z_imp_01 <- cbind(z_imp_01, "1" = integer(0))
                   }
                   
                   if(nrow(z_imp_00)!= 0){
@@ -346,13 +386,15 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                       c(p_00[t(tmp1)], p_00[t(tmp2)], p_00[t(tmp3)], p_00[t(tmp4)])
                     })
                     z_imp_00 = z_imp_00[rep(1:nrow(z_imp_00), each = 4),]
-                    z_imp_00 = cbind(z_imp_00, c(fw_00))
+                    z_imp_00 = cbind(z_imp_00, "1" = c(fw_00))
                     z_imp_00[,c("Y1", "Y2")] <- cbind(rep(c(0,0,1,1), ncol(fw_00)), rep(c(0,1,0,1), ncol(fw_00)))
                   }else{
-                    z_imp_00 <- cbind(z_imp_00, z_imp_00)[,-(6:8)]
+                    z_imp_00 <- cbind(z_imp_00, "1" = integer(0))
                   }
                   
-                  z_imp_res = z_imp_res + expl_obs * rbind(z_imp_11, z_imp_10, z_imp_01, z_imp_00)
+                  z_imp_tmp = rbind(z_imp_11, z_imp_10, z_imp_01, z_imp_00)
+                  
+                  z_imp_res = z_imp_res + expl_obs * z_imp_tmp
                   
                 }
                 
@@ -370,7 +412,7 @@ res = foreach(simnum = 1:SIMNUM, .combine = rbind,
                 
                 theta_prop = c(theta_prop1, theta_prop2)
                 
-                theta_cc = colMeans(y, na.rm = T)
+                theta_cc = colMeans(y_num, na.rm = T)
                 
                 c(Full = theta_full[1], CC = theta_cc[1], MICE = theta_mice[1], FHDI = theta_prop[1],
                   Full = theta_full[2], CC = theta_cc[2], MICE = theta_mice[2], FHDI = theta_prop[2])
