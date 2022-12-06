@@ -1,7 +1,7 @@
-args <- commandArgs(trailingOnly = TRUE)
+# args <- commandArgs(trailingOnly = TRUE)
 
 # args <- c(n, n_B, B, SIMNUM, lambda)
-# args <- c(2000, 1500, 5, 3, 100, 5, 2)
+args <- c(20000, 15000, 5, 3, 100, 2, 2)
 
 library(foreach)
 library(doParallel)
@@ -9,10 +9,10 @@ library(xtable)
 library(doSNOW)
 library(mice, warn.conflicts = FALSE)
 
-cores=round(100)
-print(paste("cores =", cores))
-cl <- makeSOCKcluster(cores)
-registerDoSNOW(cl)
+# cores=round(3)
+# print(paste("cores =", cores))
+# cl <- makeSOCKcluster(cores)
+# registerDoSNOW(cl)
 
 progress <- function(n) cat(sprintf("task %d is complete\n", n))
 opts <- list(progress=progress)
@@ -42,7 +42,8 @@ print(paste("B(The number of bootstraps) =", B))
 set.seed(1)
 
 p_x = c(0.3, 0.25, 0.25, 0.2)
-p_Y = c(0.2, 0.3, 0.6, 0.8)
+# p_Y = c(0.2, 0.3, 0.6, 0.8)
+p_Y = c(0.4, 0.4, 0.6, 0.6)
 print(paste("p_Y1 =", paste(p_Y, collapse = " ")))
 
 theta = sum(p_x * p_Y)
@@ -57,10 +58,10 @@ print(paste("theta =", theta))
 
 # theta = c(theta1, theta2)
 
-res = foreach(simnum = 1:SIMNUM,
-              .packages = c("mice"),
-              .options.snow=opts) %dopar% {
-                # for(simnum in 1:SIMNUM){
+# res = foreach(simnum = 1:SIMNUM,
+#               .packages = c("mice"),
+#               .options.snow=opts) %dopar% {
+                for(simnum in 1:SIMNUM){
                 print(simnum)
                 
                 # Generate X and Y ####
@@ -83,15 +84,17 @@ res = foreach(simnum = 1:SIMNUM,
                 
                 colnames(Y) <- paste("Y", 1:q, sep = "")
                 
-                # p_delta = sapply(1:q, function(k) X_num[,k] / 8 + 0.5 ) # 0.8
+                # p_delta = sapply(1:q, function(k) X_num[,k] / 8 + 0.2 ) # 0.8
                 # p_delta = sapply(1:q, function(k) X_num[,k] / 6 + 1/3 ) # 0.7
-                
-                p_delta = sapply(1:q, function(k) 1 / (1 + exp(-(X_num[,k] + X_num[,k+1] - X_num[,k+2]))) ) # 0.8
+
+                # p_delta = sapply(1:q, function(k) 1 / (1 + exp(-(X_num[,k] + X_num[,k+1] - X_num[,k+2]))) ) # 0.8
                 # p_delta = sapply(1:q, function(k) 1 / (1 + exp(-(-1 + X_num[,k] + X_num[,k+1] - X_num[,k+2]))) ) # 0.7
                 
                 # p_delta = sapply(1:q, function(k) 1 / (1 + exp(-(X_num[,k] + X_num[,k+1] - 5 * Y_num[,k]))))
                 # p_delta = sapply(1:q, function(k) 1 / (1 + exp(-(-1 + X_num[,k] + X_num[,k+1] - 4 * Y_num[,k]))))
 
+                p_delta = sapply(1:q, function(k) rep(0.5, n) ) # 0.8
+                
                 # p_delta[,q] = 1
                 # colMeans(p_delta)
                 
@@ -151,8 +154,8 @@ res = foreach(simnum = 1:SIMNUM,
 
                   # table(data.frame(cbind(X[,select_x], Y_ogn)), useNA = "ifany")
                   
-                  n_mat_true = table(data.frame(cbind(X_mice[,select_x], y_mice, delta)), useNA = "ifany")
-                  # n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany")
+                  # n_mat_true = table(data.frame(cbind(X_mice[,select_x], y_mice, delta)), useNA = "ifany")
+                  n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany")
                   # summary(data.frame(cbind(X[,select_x], Y_ogn, delta)))
 
                   expand_txt = paste(paste(rep("c(1,0)", q)), collapse = ",")
@@ -171,6 +174,9 @@ res = foreach(simnum = 1:SIMNUM,
                     # print(p_01s_trueTx)
                     tmp <- eval(parse(text = p_01s_trueTx))
                     tmp[is.na(tmp)] <- 1/(2^sum(delind[k,] == 0))
+                    
+                    # tmp[!is.na(tmp)] <- 1/(2^sum(delind[k,] == 0)) # to be removed
+                    
                     p_01s_true[[k]] <- tmp
                   }
 
@@ -192,7 +198,9 @@ res = foreach(simnum = 1:SIMNUM,
                   
                   diff2 = Inf
                   n_hats = vector(mode = "list", length = nrow(delind)) # sum P(Y_mis | x, Y_obs, delta)
+                  cnt = 0
                   while(T){
+                    cnt = cnt + 1
                     for(k in 1:nrow(delind)){
                       p_01sTx = paste("p_01s[[", k, "]]")
                       MARGINTx = paste(c(1:p_star, ((p_star + 1):(p_star + q))[delind[k,,drop = F] == 1]), collapse = ", ")
@@ -207,11 +215,15 @@ res = foreach(simnum = 1:SIMNUM,
                       n_hats[[k]] <- tmp
                     }
                     
+                    if(cnt == 1)n_hats_true = n_hats
+                    
                     # sum(sapply(n_hats, sum))
 
                     n_hat = Reduce(`+`, n_hats) # \hat N(X, Y)
                     
                     Py_x = sweep(n_hat, MARGIN = 1:p_star, apply(n_hat, 1:p_star, sum), "/") # P(Y | x)
+                    
+                    if(cnt == 1) Py_x_true = sweep(n_hat, MARGIN = 1:p_star, apply(n_hat, 1:p_star, sum), "/") # P(Y | x)
                     
                     Pdel1_xy = vector(mode = "list", length = q) # P(delta_j = 1 | x, y_j)
                     Pdel0_xy = vector(mode = "list", length = q) # P(delta_j = 0 | x, y_j)
@@ -227,7 +239,9 @@ res = foreach(simnum = 1:SIMNUM,
                     }
                     
                     Pdel_xy = list(Pdel0_xy, Pdel1_xy)
-                    Pdel_xy[[2]]
+                    
+                    if(cnt == 1) Pdel_xy_true = list(Pdel0_xy, Pdel1_xy)
+                    
                     
                     # P(y_mis | x, y_obs, delta_mis = 0, delta_obs = 1) \propto 
                     # P(del1 | x, y1) * \cdots * P(delq | x, yq) * p(Y | x)
@@ -248,13 +262,45 @@ res = foreach(simnum = 1:SIMNUM,
                       tmp[is.na(tmp)] <- 1/(2^sum(delind[k,,drop = F] == 0))
                       p_01s_new[[k]] <- tmp
                     }
+                    
+                    Pdel_xy_true[[1]][[1]][,,2] * Pdel_xy_true[[2]][[2]][,,2] *
+                      Py_x[,,2,2]
 
+                    Pdel_xy[[1]][[1]][,,2] * Pdel_xy[[2]][[2]][,,2] *
+                      Py_x[,,2,2]
+
+                    Pdel_xy_true[[1]][[1]][,,1] * Pdel_xy_true[[2]][[2]][,,2] *
+                      Py_x[,,1,2]
+
+                    Pdel_xy[[1]][[1]][,,1] * Pdel_xy[[2]][[2]][,,2] *
+                      Py_x[,,1,2]
+                    # 
+                    # Pdel_xy[[1]][[1]][,,2] * Pdel_xy[[2]][[2]][,,2] *
+                    #   Py_x[,,2,2] / (                    Pdel_xy[[1]][[1]][,,2] * Pdel_xy[[2]][[2]][,,2] *
+                    #     Py_x[,,2,2] +                     Pdel_xy[[1]][[1]][,,1] * Pdel_xy[[2]][[2]][,,2] *
+                    #     Py_x[,,1,2])
+                    # 
+                    p_01s_true[[2]][,,2,2,drop = F]
+                    p_01s[[2]][,,2,2,drop = F]
+                    # 
+                    # apply(n_mat_true, MARGIN = c(1,2,3,5), sum)[1,1,2,1] / apply(n_mat_true, MARGIN = c(1,2,3), sum)[1,1,2]
+                    # apply(n_mat_true, MARGIN = c(1,2,4,6), sum)[1,1,2,2] / apply(n_mat_true, MARGIN = c(1,2,4), sum)[1,1,2]
+                    # apply(n_mat_true, MARGIN = c(1,2,3,4), sum)[1,1,,] / apply(n_mat_true, MARGIN = c(1,2), sum)[1,1]
+                    # Py_x_true[,,2,2,drop = F][1,1,,]
+                    # 
+                    # Pdel_xy[[1]][[1]][,,1,drop = F]
+                    # Pdel_xy[[2]][[2]][,,2,drop = F]
+                    # 
+                    # Py_x[,,1,2,drop = F]
+                    # 
+                    # tmp[,,2,2, drop = F]
+                    
                     p_tmp = sapply(p_01s, cbind)
                     p_tmp_new = sapply(p_01s_new, cbind)
                     
                     diff = norm(p_tmp_new - p_tmp, "2")
-                    # print(diff)
-                    if(diff < 10^(-4)){
+                    print(diff)
+                    if(diff < 10^(-3)){
                     #  if(diff < 10^(-1)){
                     # if(diff2 < 10^(-1)){
                       # if(T){
@@ -267,6 +313,33 @@ res = foreach(simnum = 1:SIMNUM,
                     }
                   }
                   p_01s = p_01s_new
+                  
+                  p_tmp_new = sapply(p_01s_new, cbind)
+                  p_tmp_true = sapply(p_01s_true, cbind)
+                  
+                  hist(p_tmp_true[,2])
+                  hist(p_tmp_new[,2])
+                  plot(p_tmp_true[,2], p_tmp_new[,2])
+
+                  hist(p_tmp_true[,3])
+                  hist(p_tmp_new[,3])
+                  plot(p_tmp_true[,3], p_tmp_new[,3])
+                                    
+                  hist(p_tmp_true[,4])
+                  hist(p_tmp_new[,4])
+                  plot(p_tmp_true[,4], p_tmp_new[,4])
+                  
+                  plot(cbind(Py_x_true, Py_x))
+                  
+                  plot(Pdel_xy[[2]][[1]], Pdel_xy_true[[2]][[1]])
+                  plot(Pdel_xy[[2]][[2]], Pdel_xy_true[[2]][[2]])
+                  
+                  boxplot(sapply(n_hats, cbind) - sapply(n_hats_true, cbind))
+                  plot(sapply(n_hats, cbind)[,2], sapply(n_hats_true, cbind)[,2])
+                  plot(sapply(n_hats, cbind)[,3], sapply(n_hats_true, cbind)[,3])
+                  plot(sapply(n_hats, cbind)[,4], sapply(n_hats_true, cbind)[,4])
+                  
+                  hist(p_tmp_true[,4] - p_tmp_new[,4], freq  = F)
 
                   p_mat = n_hat / nrow(x_b)
                   
@@ -322,6 +395,9 @@ res = foreach(simnum = 1:SIMNUM,
                   if(is.nan(l_obs)) next() 
                   
                   expl_obs = exp(lambda * l_obs)
+                  
+                  print(paste("select_x =", select_x[1], select_x[2]))
+                  print(paste("expl_obs =", expl_obs))
                   
                   # Find the conditional probabilities ####
                   # P(y_mis | y_obs, X_s^{(b)})
