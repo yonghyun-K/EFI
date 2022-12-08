@@ -1,53 +1,21 @@
-args <- commandArgs(trailingOnly = TRUE)
+# args <- commandArgs(trailingOnly = TRUE)
 
 # args <- c(n, n_B, B, SIMNUM, lambda)
-args <- c(20000, 15000, 5, 12, 100, 10, 2)
+# args <- c(20000, 15000, 5, 12, 100, 30, 2)
 
 library(foreach)
 library(doParallel)
 library(xtable)
 library(doSNOW)
 library(mice, warn.conflicts = FALSE)
-i
-# Simulation  setup ####
-n = as.numeric(args[1])
-print(paste("n(Sample size) =", n))
 
-p = as.numeric(args[6])
-print(paste("p =", p))
+timenow0 = Sys.time()
+timenow = paste(timenow0, ".txt", sep = "")
 
-p_star = 2
-print(paste("p_star =", p_star))
+writeLines(c(""), timenow)
+sink(timenow, append=TRUE)
 
-q = as.numeric(args[7])
-print(paste("q =", q))
-
-n_B = as.numeric(args[2])
-print(paste("n_B(Bootstrap sample size) =", n_B))
-
-B = as.numeric(args[3])
-print(paste("B(The number of bootstraps) =", B))
-
-SIMNUM = as.numeric(args[4])
-print(paste("B(The number of bootstraps) =", B))
-
-cores=SIMNUM
-print(paste("cores =", cores))
-cl <- makeSOCKcluster(cores)
-registerDoSNOW(cl)
-
-progress <- function(n) cat(sprintf("task %d is complete\n", n))
-opts <- list(progress=progress)
-
-set.seed(1)
-
-p_x = c(0.3, 0.25, 0.25, 0.2)
-# p_Y = c(0.2, 0.3, 0.6, 0.8)
-p_Y = c(0.4, 0.4, 0.6, 0.6)
-print(paste("p_Y1 =", paste(p_Y, collapse = " ")))
-
-theta = sum(p_x * p_Y)
-print(paste("theta =", theta))
+source("par.R")
 
 # p_Y2 = p_Y
 # p_Y2 = c((0.8 + p_Y1[1]) / 2, 0.8 * p_Y1[2] + 0.1, 0.9 - 0.5 * p_Y1[3], 0.6)
@@ -62,19 +30,33 @@ res = foreach(simnum = 1:SIMNUM,
               .packages = c("mice"),
               .options.snow=opts) %dopar% {
                 # for(simnum in 1:SIMNUM){
-                print(simnum)
+                
+                if(simnum == 1) sink(timenow, append=TRUE)
+                print(paste("simnum =", simnum))
                 
                 # Generate X and Y ####
                 
                 # is.factor(X[,1]) == FALSE: X can be high-dimensional
-                X_num = matrix(rep(1:4, n * p)[rmultinom(n * p, 1, p_x) == 1], nr = n, nc = p) 
+                X_num = matrix(rep(1:k_x, n * p)[rmultinom(n * p, 1, p_x) == 1], nr = n, nc = p) 
                 colnames(X_num) <- paste("X", 1:p, sep = "")
                 
                 p_Y_mat = apply(X_num[,1:q, drop = F], 2, function(k) p_Y[k])
+                # p_Y_mat = apply((X_num[,1:q, drop = F] + X_num[,(1:q) * 2, drop = F] + X_num[,(1:q) * 3, drop = F]), 2, function(k) p_Y[k])
                 colnames(p_Y_mat) <- paste("Y", 1:q, sep = "")
                 # p_Y_mat[,2] = rowSums(cbind((0.8 + Y1) / 2, 0.8 * Y1 + 0.1, 0.9 - 0.5 * Y1, 0.6) * model.matrix(~ 0 + as.factor(X[,1])))
                 
                 Y_num = apply(p_Y_mat, 2, function(k) rbinom(nrow(p_Y_mat), 1, k))
+                
+                # if(p > 20){
+                #   print("Y_num[,1] = ifelse(rowsum(X_num[,1:10]) %% 2 == 0, 0, 1)
+                #   Y_num[,2] = ifelse(apply(X_num[,seq(from = 11, to = 19, by = 2)] - X_num[,seq(from = 12, to = 20, by = 2)], 1, prod)
+                #                      > 0, 0, 1)")
+                #   Y_num[,1] = ifelse(rowSums(X_num[,1:10]) %% 2 == 0, 0, 1)
+                #   Y_num[,2] = ifelse(apply(X_num[,seq(from = 11, to = 19, by = 2)] - X_num[,seq(from = 12, to = 20, by = 2)], 1, prod)
+                #                      != 0, 0, 1)
+                # }
+
+                
                 Y = data.frame(Y_num)
                 for(k in 1:q){
                   Y[[k]] = factor(Y[[k]])
@@ -83,17 +65,18 @@ res = foreach(simnum = 1:SIMNUM,
                 # Y = apply(X[,1:q], 2, function(k) rbinom(n, 1, p_Y[k])))
                 
                 colnames(Y) <- paste("Y", 1:q, sep = "")
+
+                p_delta = sapply(1:q, p_delta_ftn)
                 
-                # p_delta = sapply(1:q, function(k) X_num[,k] / 8 + 0.2 ) # 0.8
-                # p_delta = sapply(1:q, function(k) X_num[,k] / 6 + 1/3 ) # 0.7
+                print("p_delta_ftn")
+                print(p_delta_ftn)
+                print(paste("mean(p_delta)", round(mean(p_delta), 5)))
+                
+                print(summary(p_delta))
+                
+                # p_delta = sapply(1:q, )
 
-                # p_delta = sapply(1:q, function(k) 1 / (1 + exp(-(X_num[,k] + X_num[,k+1] - X_num[,k+2]))) ) # 0.8
-                # p_delta = sapply(1:q, function(k) 1 / (1 + exp(-(-1 + X_num[,k] + X_num[,k+1] - X_num[,k+2]))) ) # 0.7
-                mean(p_delta)
-                p_delta = sapply(1:q, function(k) 1 / (-0.2 + exp(-(X_num[,k] + X_num[,k+1] - 5 * Y_num[,k]))))
-                # p_delta = sapply(1:q, function(k) 1 / (1 + exp(-(-1 + X_num[,k] + X_num[,k+1] - 4 * Y_num[,k]))))
-
-                # p_delta = sapply(1:q, function(k) rep(0.5, n) ) # 0.5
+                # p_delta = sapply(1:q,  ) # 0.5
                 
                 # p_delta[,q] = 1
                 # colMeans(p_delta)
@@ -114,8 +97,6 @@ res = foreach(simnum = 1:SIMNUM,
                 Y[delta == 0] = NA
                 
                 Y_num[delta == 0] = NA
-                
-                lambda = as.numeric(args[5])
                 
                 # train_idx = sample(1:n, round(n * 0.9), replace = FALSE)
                 X = data.frame(X_num)
@@ -145,17 +126,19 @@ res = foreach(simnum = 1:SIMNUM,
                 # bstp_idx_B = NULL
                 
                 for(b in 1:B){
-                  print(b)
+                  print(paste("b =", b))
                   select_x = sample(1:p, p_star, replace = F)
-                  #  select_x = combn(p, p_star)[,(b+44) %% 45 + 1]
+                  
+                  # cand_tmp = ncol(combn(p, p_star))
+                  #  select_x = combn(p, p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]
                   # select_x = c(1, 2)
                   # select_x = c(3, 4)
                   # select_x = c(5, 6)
 
                   # table(data.frame(cbind(X[,select_x], Y_ogn)), useNA = "ifany")
                   
-                  # n_mat_true = table(data.frame(cbind(X_mice[,select_x], y_mice, delta)), useNA = "ifany")
-                  n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany")
+                  n_mat_true = table(data.frame(cbind(X_mice[,select_x], y_mice, delta)), useNA = "ifany"); if(b == 1) print("use MICE for initial values")
+                  # n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany"); if(b == 1) print("use full data for initial values")
                   # summary(data.frame(cbind(X[,select_x], Y_ogn, delta)))
 
                   expand_txt = paste(paste(rep("c(1,0)", q)), collapse = ",")
@@ -175,7 +158,7 @@ res = foreach(simnum = 1:SIMNUM,
                     tmp <- eval(parse(text = p_01s_trueTx))
                     tmp[is.na(tmp)] <- 1/(2^sum(delind[k,] == 0))
                     
-                    # tmp[!is.na(tmp)] <- 1/(2^sum(delind[k,] == 0)) # to be removed
+                    # tmp[!is.na(tmp)] <- 1/(2^sum(delind[k,] == 0)); if(b == 1 & k == 1) print("use uniform priors for initial") # to be removed
                     
                     p_01s_true[[k]] <- tmp
                   }
@@ -192,7 +175,7 @@ res = foreach(simnum = 1:SIMNUM,
                   
                   # EM algorithm to compute \pi_{ijkl} ####
                   n_mat = table(data.frame(cbind(x_b, y_b)), useNA = "always")
-                  n_mat = eval(parse(text = paste("n_mat[", paste(rep(-5, p_star), collapse = ","), 
+                  n_mat = eval(parse(text = paste("n_mat[", paste(rep(-k_x - 1, p_star), collapse = ","), 
                                                   paste(rep(",", q), collapse = ""), "]")))
                   
                   p_01s = p_01s_true
@@ -212,6 +195,7 @@ res = foreach(simnum = 1:SIMNUM,
                       n_hatsTx = paste(p_01sTx, MARGINTx, n_matTx,"\"*\"", sep = ", ")
                       n_hatsTx = paste("sweep(", n_hatsTx, ")")
                       # print(n_hatsTx)
+                      # print(eval(parse(text = n_hatsTx)))
                       tmp <- eval(parse(text = n_hatsTx))
                       n_hats[[k]] <- tmp
                     }
@@ -317,7 +301,8 @@ res = foreach(simnum = 1:SIMNUM,
 
                     diff = norm(p_tmp_new - p_tmp, "2")
                     # print(diff)
-                    if(diff < 10^(-4) | cnt > 500){
+                    if(diff < 10^(-4) | cnt > 1000){
+		                # if(cnt > 10){
                     #  if(diff < 10^(-1)){
                     # if(diff2 < 10^(-1)){
                       # if(T){
@@ -329,6 +314,9 @@ res = foreach(simnum = 1:SIMNUM,
                       diff2 = diff
                     }
                   }
+                  
+                  # print("EM is done!")
+                  
                   p_01s = p_01s_new
                   
                   # p_tmp_true = sapply(p_01s_true, cbind) ####
@@ -491,19 +479,22 @@ res = foreach(simnum = 1:SIMNUM,
                 
                 wcol = p_star + q + 1
                 
-                print(paste("sum(z_imp_res[,5]) = ", sum(z_imp_res[,wcol])))
+                # print(paste("sum(z_imp_res[,5]) = ", sum(z_imp_res[,wcol])))
                 
                 theta_prop = colSums(z_imp_res[,(p_star+1):(p_star+q) ,drop = F] * z_imp_res[,wcol]) / sum(z_imp_res[,wcol]) - 1
                 
                 theta_full
                 
-                print(theta_prop)
+                # print(theta_prop)
                 
                 theta_cc = colMeans(y_num, na.rm = T)
                 
                 rbind(theta_full, theta_cc, theta_mice, theta_prop)
                 
               }
+
+timenow2 = Sys.time()
+print(timenow2 - timenow0)
 
 for(k in 1:q){
   res_fin = sapply(res, function(x) x[,k])
@@ -517,3 +508,4 @@ for(k in 1:q){
   # xtable::xtable(tmp_tbl, digits = 4)
 }
 
+stopCluster(cl)
