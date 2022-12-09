@@ -20,7 +20,7 @@ print(paste("B(The number of bootstraps) =", B))
 SIMNUM = 100
 print(paste("SIMNUM(MC size) =", SIMNUM))
 
-k_x = 4
+k_x = 2
 print(paste("k_x(Number of categories of X) =", k_x))
 
 lambda = 120
