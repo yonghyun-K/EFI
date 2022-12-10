@@ -5,7 +5,7 @@ print(paste("n(Sample size) =", n))
 n_B = 1500
 print(paste("n_B(Bootstrap sample size) =", n_B))
 
-p = 100
+p = 5
 print(paste("p =", p))
 
 p_star = 2
@@ -17,7 +17,7 @@ print(paste("q =", q))
 B = 30
 print(paste("B(The number of bootstraps) =", B))
 
-SIMNUM = 100
+SIMNUM = round(detectCores() / 2)
 print(paste("SIMNUM(MC size) =", SIMNUM))
 
 k_x = 2

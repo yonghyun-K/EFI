@@ -8,6 +8,7 @@ library(doParallel)
 library(xtable)
 library(doSNOW)
 library(mice, warn.conflicts = FALSE)
+library(missForest)
 
 timenow0 = Sys.time()
 timenow = paste(timenow0, ".txt", sep = "")
@@ -27,7 +28,7 @@ source("par.R")
 # theta = c(theta1, theta2)
 
 res = foreach(simnum = 1:SIMNUM,
-              .packages = c("mice"),
+              .packages = c("mice", "missForest"),
               .options.snow=opts) %dopar% {
                 # for(simnum in 1:SIMNUM){
                 
@@ -112,6 +113,7 @@ res = foreach(simnum = 1:SIMNUM,
                 y_num = Y_num[train_idx,, drop = F]
                 
                 # MICE ####
+                print("MICE starts")
                 imp <- mice(cbind(X, Y_num), printFlag = FALSE)
                 theta_mice = sapply(1:q, function(k){
                   str = paste("Y", k, "~1", collapse = "", sep = "")
@@ -121,7 +123,15 @@ res = foreach(simnum = 1:SIMNUM,
                 comp_mice = complete(imp,1:5)
                 X_mice = comp_mice[,1:p]
                 y_mice = comp_mice[,(p+1):ncol(comp_mice)]
-
+                
+                # missForest ####
+                print("missForest starts")
+                comp_mF = missForest(cbind(X, Y))$ximp
+                y_mF = comp_mF[,(p+1):ncol(comp_mF)]
+                y_mF = apply(y_mF, 2, as.numeric)
+                
+                theta_mF = apply(y_mF, 2, mean)
+                
                 w_B = NULL
                 # bstp_idx_B = NULL
                 
@@ -501,7 +511,7 @@ res = foreach(simnum = 1:SIMNUM,
                 
                 theta_cc = colMeans(y_num, na.rm = T)
                 
-                rbind(theta_full, theta_cc, theta_mice, theta_prop)
+                rbind(theta_full, theta_cc, theta_mice, theta_mF, theta_prop)
                 
               }
 
