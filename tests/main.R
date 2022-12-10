@@ -229,7 +229,8 @@ res = foreach(simnum = 1:SIMNUM,
 
                     for(k in 1:q){
                       # tmp = c(1:p_star, k + p_star) # NMAR
-                      tmp = c(1:p_star) # MAR
+                      # tmp = c(1:p_star) # MAR
+                      tmp = c(k + p_star) # self-cencoring
                       
                       # print(delind[delind[,k] == 1,])
                       np1_hat = Reduce(`+`, n_hats[delind[,k,drop = F] == 1])
@@ -252,7 +253,8 @@ res = foreach(simnum = 1:SIMNUM,
                       # print(ydex)
                       for(l in 1:q){
                         # MARGIN = c(1:p_star, l + p_star)  # NMAR
-                        MARGIN = c(1:p_star) # MAR
+                        # MARGIN = c(1:p_star) # MAR
+                        MARGIN = c(l + p_star) # self-cencoring
                         
                         tmp <- sweep(tmp, MARGIN = MARGIN, Pdel_xy[[ydex[,l] + 1]][[l]], "*")
                       }
@@ -386,7 +388,8 @@ res = foreach(simnum = 1:SIMNUM,
                       log(sum(apply(cands, 1, function(k2) {
                         p_mat[t(k2)] * prod(sapply(1:q, function(l){
                           # texts = paste(k2[c(1:p_star, p_star + l)], collapse = ",") # NMAR
-                          texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
+                          # texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
+                          texts = paste(k2[c(p_star + l)], collapse = ",") # Self-censoring
                           texts = paste("Pdel_xy[[ydex[,", l, "] + 1]][[", l, "]][", texts, "]")
                           # print(texts)
                           eval(parse(text = texts))
@@ -461,7 +464,8 @@ res = foreach(simnum = 1:SIMNUM,
                         p_tmp = apply(cands, 1, function(k2) {
                           p_mat[t(k2)] * prod(sapply(1:q, function(l){
                             # texts = paste(k2[c(1:p_star, p_star + l)], collapse = ",") # NMAR
-                            texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
+                            # texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
+                            texts = paste(k2[c(p_star + l)], collapse = ",") # Self-censoring
                             texts = paste("Pdel_xy[[ydex[,", l, "] + 1]][[", l, "]][", texts, "]")
                             # print(texts)
                             eval(parse(text = texts))
