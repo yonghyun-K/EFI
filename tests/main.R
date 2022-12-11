@@ -132,6 +132,7 @@ res = foreach(simnum = 1:SIMNUM,
                 
                 theta_mF = apply(y_mF, 2, mean)
                 
+                print("EFI starts")
                 w_B = NULL
                 # bstp_idx_B = NULL
                 
@@ -139,8 +140,8 @@ res = foreach(simnum = 1:SIMNUM,
                   print(paste("b =", b))
                   # select_x = sample(1:p, p_star, replace = F)
                   
-                  cand_tmp = ncol(combn(5, p_star))
-                   select_x = combn(5, p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]
+                  cand_tmp = ncol(combn(min(c(p, 5)), p_star))
+                  select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]
                   # select_x = c(1, 2)
                   # select_x = c(3, 4)
                   # select_x = c(5, 6)
@@ -148,7 +149,7 @@ res = foreach(simnum = 1:SIMNUM,
                   # table(data.frame(cbind(X[,select_x], Y_ogn)), useNA = "ifany")
                   
                   n_mat_true = table(data.frame(cbind(X_mice[,select_x], y_mice, delta)), useNA = "ifany"); if(b == 1) print("use MICE for initial values")
-                  #n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany"); if(b == 1) print("use full data for initial values")
+                  # n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany"); if(b == 1) print("use full data for initial values")
                   # summary(data.frame(cbind(X[,select_x], Y_ogn, delta)))
 
                   expand_txt = paste(paste(rep("c(1,0)", q)), collapse = ",")
@@ -189,6 +190,7 @@ res = foreach(simnum = 1:SIMNUM,
                   
                   # EM algorithm to compute \pi_{ijkl} ####
                   n_mat = table(data.frame(cbind(x_b, y_b)), useNA = "always")
+                  # n_mat = table(data.frame(cbind(x, y)), useNA = "always"); if(b == 1) print("n_mat uses full data: it should be corrected")
                   n_mat = eval(parse(text = paste("n_mat[", paste(rep(-k_x - 1, p_star), collapse = ","), 
                                                   paste(rep(",", q), collapse = ""), "]")))
                   
@@ -220,7 +222,8 @@ res = foreach(simnum = 1:SIMNUM,
 
                     n_hat = Reduce(`+`, n_hats) # \hat N(X, Y)
                     
-                    Py_x = sweep(n_hat, MARGIN = 1:p_star, apply(n_hat, 1:p_star, sum), "/") # P(Y | x)
+                    # Py_x = sweep(n_hat, MARGIN = 1:p_star, apply(n_hat, 1:p_star, sum), "/") # P(Y | x)
+                    Py_x = n_hat / n_B # P(x, y)
                     
                     # if(cnt == 1) Py_x_true = sweep(n_hat, MARGIN = 1:p_star, apply(n_hat, 1:p_star, sum), "/") # P(Y | x)
                     
@@ -321,7 +324,7 @@ res = foreach(simnum = 1:SIMNUM,
 
                     diff = norm(p_tmp_new - p_tmp, "2")
                     # print(diff)
-                    if(diff < 10^(-4) | cnt > 1000){
+                    if(diff < 10^(-4) | cnt > maxit){
 		                # if(cnt > 10){
                     #  if(diff < 10^(-1)){
                     # if(diff2 < 10^(-1)){
@@ -535,3 +538,5 @@ for(k in 1:q){
 }
 
 stopCluster(cl)
+sink()
+

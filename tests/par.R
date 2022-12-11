@@ -1,11 +1,11 @@
 # Simulation  setup ####
-n = 2000
+n = 20000
 print(paste("n(Sample size) =", n))
 
-n_B = 1500
+n_B = 15000
 print(paste("n_B(Bootstrap sample size) =", n_B))
 
-p = 5
+p = 2
 print(paste("p =", p))
 
 p_star = 2
@@ -14,7 +14,7 @@ print(paste("p_star =", p_star))
 q = 2
 print(paste("q =", q))
 
-B = 30
+B = 5
 print(paste("B(The number of bootstraps) =", B))
 
 SIMNUM = round(detectCores() / 2)
@@ -25,6 +25,9 @@ print(paste("k_x(Number of categories of X) =", k_x))
 
 lambda = 120
 print(paste("lambda =", lambda))
+
+maxit = 500
+print(paste("maxit =", maxit))
 
 cores=SIMNUM
 print(paste("cores =", cores))
@@ -48,17 +51,18 @@ theta = sum(p_x * p_Y[1:k_x])
 # theta = 1/2
 print(paste("theta =", round(theta, 5)))
 
-# p_delta_ftn = function(k) function(k) rep(0.5, n); print("MCAR") # 0.5
+p_delta_ftn = function(k) rep(0.5, n); print("MCAR") # 0.5
 
-#  p_delta_ftn = function(k) X_num[,k] / 5 + 0.2; print("MAR")# 0.5
-#  p_delta_ftn = function(k) X_num[,k] / 3 + 1/3; print("MAR") # 0.84
+# p_delta_ftn = function(k) X_num[,k] / 5 + 0.2; print("MAR")# 0.5
+ # p_delta_ftn = function(k) X_num[,k] / 3 + 1/3; print("MAR") # 0.84
 
 # p_delta_ftn = function(k) 1 / (1 + exp(-(X_num[,k] + X_num[,k+1] - X_num[,k+2]))); print("MAR") # 0.8
 # p_delta_ftn = function(k) 1 / (1 + exp(-(-1 + X_num[,k] + X_num[,k+1] - X_num[,k+2]))); print("MAR") # 0.61
-p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 4 + X_num[,k+2] / 4 - X_num[,k+3] / 4))); print("MAR") # 0.415
+# p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 4 + X_num[,k+2] / 4 - X_num[,k+3] / 4))); print("MAR") # 0.415
 # p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 4 + 1 / 4))); print("MAR") # 0.415
 
 # p_delta_ftn = function(k) 1 / (1 + exp(-(1 - X_num[,k] / 4 + 1 / 4 - Y_num[,k] / 4))); print("NMAR") # 0.415
 # p_delta_ftn = function(k) 1 / (1 + exp( -(1.5 + X_num[,k] + X_num[,k+1] - X_num[,k+2] - 5 * Y_num[,k]))); print("NMAR") # 0.561
 # p_delta_ftn = function(k) 1 / (1 + exp( -(X_num[,k] + X_num[,k+1] - 5 * Y_num[,k]))); print("NMAR")
 # p_delta_ftn = function(k) 1 / (1 + exp( -( X_num[,k] / 4 - Y_num[,k] / 4))); print("NMAR")
+# p_delta_ftn = function(k) 1 / (1 + exp( -(Y_num[,k] / 4))); print("NMAR")
