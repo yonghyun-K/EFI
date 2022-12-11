@@ -141,7 +141,7 @@ res = foreach(simnum = 1:SIMNUM,
                   # select_x = sample(1:p, p_star, replace = F)
                   
                   cand_tmp = ncol(combn(min(c(p, 5)), p_star))
-                  select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]
+                  select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
                   # select_x = c(1, 2)
                   # select_x = c(3, 4)
                   # select_x = c(5, 6)

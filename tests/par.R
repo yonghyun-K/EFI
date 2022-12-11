@@ -1,8 +1,8 @@
 # Simulation  setup ####
-n = 20000
+n = 2000
 print(paste("n(Sample size) =", n))
 
-n_B = 15000
+n_B = 1500
 print(paste("n_B(Bootstrap sample size) =", n_B))
 
 p = 2
@@ -28,6 +28,10 @@ print(paste("lambda =", lambda))
 
 maxit = 500
 print(paste("maxit =", maxit))
+
+lambda_vec_text = "seq(from = 10, to = 120, len = SIMNUM)"
+lambda_vec = eval(parse(text = lambda_vec_text))
+print(paste("lambda_vec_text =", lambda_vec_text))
 
 cores=SIMNUM
 print(paste("cores =", cores))
