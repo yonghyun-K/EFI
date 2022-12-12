@@ -32,10 +32,7 @@ colnames(Y) <- paste("Y", 1:q, sep = "")
 
 p_delta = sapply(1:q, p_delta_ftn)
 
-print("p_delta_ftn")
-print(p_delta_ftn)
 print(paste("mean(p_delta)", round(mean(p_delta), 5)))
-
 print(summary(p_delta))
 
 # p_delta = sapply(1:q, )
@@ -67,6 +64,14 @@ X = data.frame(X_num)
 for(k in 1:p){
   X[[k]] = factor(X[[k]])
 }
+
+# MICE ####
+print("MICE starts")
+imp <- mice(cbind(X, Y_num), printFlag = FALSE)
+
+comp_mice = complete(imp,1:5)
+X_mice = comp_mice[,1:p]
+y_mice = comp_mice[,(p+1):ncol(comp_mice)]
 
 K = 10
 
@@ -103,6 +108,7 @@ res_lambda = foreach(lambda = lambda_vec,
                   y_test = Y_num[test_idx,, drop = F]
                   delta_test = delta[test_idx,, drop = F]
                   
+                  p_mat_lambda = array(0, dim = rep(2,q))
                   w_B = NULL
                   for(b in 1:B){
                     print(paste("b =", b))
@@ -344,15 +350,16 @@ res_lambda = foreach(lambda = lambda_vec,
                     z_oob = cbind(x_oob, y_oob + 1)
                     # table(data.frame(delta_obb))
                     
+                    tmpftn = function(x){
+                      if(!is.na(x)) x
+                      else c(1,2)
+                    }
+                    
                     lik_seg_all = 0
                     for(k in 1:nrow(delind)){
                       ydex = delind[k,,drop = F]
                       z_oob_sub = z_oob[apply(delta_obb, 1, function(id) all(id == ydex)),]
                       if(nrow(z_oob_sub) != 0){
-                        tmpftn = function(x){
-                          if(!is.na(x)) x
-                          else c(1,2)
-                        }
                         lik_seg = sum(apply(z_oob_sub, 1, function(rows){
                           if(k != 1) cands = expand.grid(sapply(rows, tmpftn))
                           else cands = t(rows)
@@ -398,11 +405,8 @@ res_lambda = foreach(lambda = lambda_vec,
                     # print(paste("select_x =", select_x[1], select_x[2]))
                     # print(paste("expl_obs =", expl_obs))
                     
-                    if(!exists("p_mat_lambda")){
-                      p_mat_lambda = expl_obs * apply(p_mat, c(p_star+ 1,p_star + q), sum)
-                    }else{
-                      p_mat_lambda = p_mat_lambda + expl_obs * apply(p_mat, c(p_star+ 1,p_star + q), sum)
-                    }
+                    p_mat_lambda = p_mat_lambda + expl_obs * apply(p_mat, c(p_star+ 1,p_star + q), sum)
+                    
                   }
                   
                   if(sum(w_B) == 0){
@@ -411,16 +415,13 @@ res_lambda = foreach(lambda = lambda_vec,
                   }
                   
                   p_mat_lambda = p_mat_lambda / sum(w_B)
-                  print(p_mat_lambda)
+                  # print(p_mat_lambda)
                   lik_seg_all = 0
+                  
                   for(k in 1:nrow(delind)){
                     ydex = delind[k,,drop = F]
-                    y_test_sub = y_test[apply(delta_test, 1, function(id) all(id == ydex)),]
+                    y_test_sub = y_test[apply(delta_test, 1, function(id) all(id == ydex)),] + 1
                     if(nrow(y_test_sub) != 0){
-                      tmpftn = function(x){
-                        if(!is.na(x)) x
-                        else c(1,2)
-                      }
                       lik_seg = sum(apply(y_test_sub, 1, function(rows){
                         if(k != 1) cands = expand.grid(sapply(rows, tmpftn))
                         else cands = t(rows)
@@ -443,4 +444,10 @@ res_lambda = foreach(lambda = lambda_vec,
                 mean(res_K)
               }
 
-res_lambda
+res_lambda = unlist(res_lambda)
+lmabda_min = lambda_vec[which.min(res_lambda)]
+print(paste("lmabda_min =", lmabda_min))
+
+png(filename=paste(timenow0, ".png", sep = ""))
+plot(lambda_vec, res_lambda)
+dev.off()

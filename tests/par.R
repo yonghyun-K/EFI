@@ -70,3 +70,6 @@ p_delta_ftn = function(k) rep(0.5, n); print("MCAR") # 0.5
 # p_delta_ftn = function(k) 1 / (1 + exp( -(X_num[,k] + X_num[,k+1] - 5 * Y_num[,k]))); print("NMAR")
 # p_delta_ftn = function(k) 1 / (1 + exp( -( X_num[,k] / 4 - Y_num[,k] / 4))); print("NMAR")
 # p_delta_ftn = function(k) 1 / (1 + exp( -(Y_num[,k] / 4))); print("NMAR")
+
+print("p_delta_ftn")
+print(p_delta_ftn)

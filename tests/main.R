@@ -17,6 +17,7 @@ writeLines(c(""), timenow)
 sink(timenow, append=TRUE)
 
 source("par.R")
+source("cv.R")
 
 # p_Y2 = p_Y
 # p_Y2 = c((0.8 + p_Y1[1]) / 2, 0.8 * p_Y1[2] + 0.1, 0.9 - 0.5 * p_Y1[3], 0.6)
@@ -69,8 +70,6 @@ res = foreach(simnum = 1:SIMNUM,
 
                 p_delta = sapply(1:q, p_delta_ftn)
                 
-                print("p_delta_ftn")
-                print(p_delta_ftn)
                 print(paste("mean(p_delta)", round(mean(p_delta), 5)))
                 
                 print(summary(p_delta))
@@ -375,15 +374,16 @@ res = foreach(simnum = 1:SIMNUM,
                   z_oob = cbind(x_oob, y_oob + 1)
                   # table(data.frame(delta_obb))
                   
+                  tmpftn = function(x){
+                    if(!is.na(x)) x
+                    else c(1,2)
+                  }
+                  
                   lik_seg_all = 0
                   for(k in 1:nrow(delind)){
                     ydex = delind[k,,drop = F]
                     z_oob_sub = z_oob[apply(delta_obb, 1, function(id) all(id == ydex)),]
                     if(nrow(z_oob_sub) != 0){
-                      tmpftn = function(x){
-                        if(!is.na(x)) x
-                        else c(1,2)
-                      }
                     lik_seg = sum(apply(z_oob_sub, 1, function(rows){
                       if(k != 1) cands = expand.grid(sapply(rows, tmpftn))
                       else cands = t(rows)
@@ -454,10 +454,6 @@ res = foreach(simnum = 1:SIMNUM,
                     ydex = delind[k,,drop = F]
                     z_sub = z[apply(delta, 1, function(id) all(id == ydex)),]
                     if(nrow(z_sub) != 0){
-                      tmpftn = function(x){
-                        if(!is.na(x)) x
-                        else c(1,2)
-                      }
                       
                       seg = apply(z_sub, 1, function(rows){
                         if(k != 1) cands = expand.grid(sapply(rows, tmpftn))
