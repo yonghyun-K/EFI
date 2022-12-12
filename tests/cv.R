@@ -76,10 +76,18 @@ y_mice = comp_mice[,(p+1):ncol(comp_mice)]
 K = 10
 
 bstp_idx_B = NULL
+select_x_B = NULL
 for (b in 1:B) {
   bstp_idx = sample(1:((1 - 1 / K) * n), n_B, replace = TRUE)
   bstp_idx_B = cbind(bstp_idx_B, bstp_idx)
+  
+  # select_x = sample(1:p, p_star, replace = F); if(b == 1) print("random variable selection")
+  # cand_tmp = ncol(combn(min(c(p, 5)), p_star)); select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
+  cand_tmp = ncol(combn(p, p_star)); select_x = combn(p, p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
+  select_x_B = cbind(select_x_B, select_x)
 }
+
+
 
 cuts = cut(sample(1:n, n), breaks = K, labels = FALSE)
 
@@ -94,6 +102,7 @@ res_lambda = foreach(lambda = lambda_vec,
                 
                 # for (k_cv in 1:K){
                 for (k_cv in 1){
+                  if(lambda == 1 & k_cv == 1) sink(timenow, append=TRUE)
                   test_idx = which(cuts == k_cv)
                   train_idx = which(cuts != k_cv)
                   
@@ -112,13 +121,7 @@ res_lambda = foreach(lambda = lambda_vec,
                   w_B = NULL
                   for(b in 1:B){
                     print(paste("b =", b))
-                    # select_x = sample(1:p, p_star, replace = F)
-                    
-                    cand_tmp = ncol(combn(min(c(p, 5)), p_star))
-                    select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]
-                    # select_x = c(1, 2)
-                    # select_x = c(3, 4)
-                    # select_x = c(5, 6)
+                    select_x = select_x_B[,b]
                     
                     # table(data.frame(cbind(X[,select_x], Y_ogn)), useNA = "ifany")
                     
@@ -207,8 +210,8 @@ res_lambda = foreach(lambda = lambda_vec,
                       
                       for(k in 1:q){
                         # tmp = c(1:p_star, k + p_star) # NMAR
-                        # tmp = c(1:p_star) # MAR
-                        tmp = c(k + p_star) # self-cencoring
+                        tmp = c(1:p_star) # MAR
+                        # tmp = c(k + p_star) # self-cencoring
                         
                         # print(delind[delind[,k] == 1,])
                         np1_hat = Reduce(`+`, n_hats[delind[,k,drop = F] == 1])
@@ -231,8 +234,8 @@ res_lambda = foreach(lambda = lambda_vec,
                         # print(ydex)
                         for(l in 1:q){
                           # MARGIN = c(1:p_star, l + p_star)  # NMAR
-                          # MARGIN = c(1:p_star) # MAR
-                          MARGIN = c(l + p_star) # self-cencoring
+                          MARGIN = c(1:p_star) # MAR
+                          # MARGIN = c(l + p_star) # self-cencoring
                           
                           tmp <- sweep(tmp, MARGIN = MARGIN, Pdel_xy[[ydex[,l] + 1]][[l]], "*")
                         }
@@ -299,7 +302,7 @@ res_lambda = foreach(lambda = lambda_vec,
                       
                       diff = norm(p_tmp_new - p_tmp, "2")
                       # print(diff)
-                      if(diff < 10^(-4) | cnt > maxit){
+                      if(cnt > maxit | diff == 0){
                         # if(cnt > 10){
                         #  if(diff < 10^(-1)){
                         # if(diff2 < 10^(-1)){
@@ -358,7 +361,7 @@ res_lambda = foreach(lambda = lambda_vec,
                     lik_seg_all = 0
                     for(k in 1:nrow(delind)){
                       ydex = delind[k,,drop = F]
-                      z_oob_sub = z_oob[apply(delta_obb, 1, function(id) all(id == ydex)),]
+                      z_oob_sub = z_oob[apply(delta_obb, 1, function(id) all(id == ydex)),,drop = F]
                       if(nrow(z_oob_sub) != 0){
                         lik_seg = sum(apply(z_oob_sub, 1, function(rows){
                           if(k != 1) cands = expand.grid(sapply(rows, tmpftn))
@@ -367,8 +370,8 @@ res_lambda = foreach(lambda = lambda_vec,
                           log(sum(apply(cands, 1, function(k2) {
                             p_mat[t(k2)] * prod(sapply(1:q, function(l){
                               # texts = paste(k2[c(1:p_star, p_star + l)], collapse = ",") # NMAR
-                              # texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
-                              texts = paste(k2[c(p_star + l)], collapse = ",") # Self-censoring
+                              texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
+                              # texts = paste(k2[c(p_star + l)], collapse = ",") # Self-censoring
                               texts = paste("Pdel_xy[[ydex[,", l, "] + 1]][[", l, "]][", texts, "]")
                               # print(texts)
                               eval(parse(text = texts))
@@ -402,10 +405,9 @@ res_lambda = foreach(lambda = lambda_vec,
                     
                     expl_obs = exp(lambda * l_obs)
                     w_B = c(w_B, expl_obs)                  
-                    # print(paste("select_x =", select_x[1], select_x[2]))
-                    # print(paste("expl_obs =", expl_obs))
+                    print(paste("select_x =", paste(select_x))); print(paste("expl_obs =", expl_obs))
                     
-                    p_mat_lambda = p_mat_lambda + expl_obs * apply(p_mat, c(p_star+ 1,p_star + q), sum)
+                    p_mat_lambda = p_mat_lambda + expl_obs * apply(p_mat, c((p_star+ 1):(p_star + q)), sum)
                     
                   }
                   
@@ -420,7 +422,7 @@ res_lambda = foreach(lambda = lambda_vec,
                   
                   for(k in 1:nrow(delind)){
                     ydex = delind[k,,drop = F]
-                    y_test_sub = y_test[apply(delta_test, 1, function(id) all(id == ydex)),] + 1
+                    y_test_sub = y_test[apply(delta_test, 1, function(id) all(id == ydex)),,drop = F] + 1
                     if(nrow(y_test_sub) != 0){
                       lik_seg = sum(apply(y_test_sub, 1, function(rows){
                         if(k != 1) cands = expand.grid(sapply(rows, tmpftn))
@@ -445,8 +447,9 @@ res_lambda = foreach(lambda = lambda_vec,
               }
 
 res_lambda = unlist(res_lambda)
-lmabda_min = lambda_vec[which.min(res_lambda)]
-print(paste("lmabda_min =", lmabda_min))
+lmabda_max = lambda_vec[which.max(res_lambda)]
+print(paste("lmabda_max =", lmabda_max))
+lambda = lmabda_max
 
 png(filename=paste(timenow0, ".png", sep = ""))
 plot(lambda_vec, res_lambda)

@@ -14,22 +14,22 @@ print(paste("p_star =", p_star))
 q = 2
 print(paste("q =", q))
 
-B = 5
+B = 10
 print(paste("B(The number of bootstraps) =", B))
 
-SIMNUM = round(detectCores() / 2)
+SIMNUM = round(min(c(detectCores() / 3 * 2, 100)))
 print(paste("SIMNUM(MC size) =", SIMNUM))
 
 k_x = 2
 print(paste("k_x(Number of categories of X) =", k_x))
 
-lambda = 120
-print(paste("lambda =", lambda))
+# lambda = 120
+# print(paste("lambda =", lambda))
 
 maxit = 500
 print(paste("maxit =", maxit))
 
-lambda_vec_text = "seq(from = 10, to = 120, len = SIMNUM)"
+lambda_vec_text = "seq(from = 1, to = 500, len = SIMNUM)"
 lambda_vec = eval(parse(text = lambda_vec_text))
 print(paste("lambda_vec_text =", lambda_vec_text))
 
@@ -55,15 +55,16 @@ theta = sum(p_x * p_Y[1:k_x])
 # theta = 1/2
 print(paste("theta =", round(theta, 5)))
 
-p_delta_ftn = function(k) rep(0.5, n); print("MCAR") # 0.5
+# p_delta_ftn = function(k) rep(0.5, n); print("MCAR") # 0.5
 
 # p_delta_ftn = function(k) X_num[,k] / 5 + 0.2; print("MAR")# 0.5
  # p_delta_ftn = function(k) X_num[,k] / 3 + 1/3; print("MAR") # 0.84
 
 # p_delta_ftn = function(k) 1 / (1 + exp(-(X_num[,k] + X_num[,k+1] - X_num[,k+2]))); print("MAR") # 0.8
 # p_delta_ftn = function(k) 1 / (1 + exp(-(-1 + X_num[,k] + X_num[,k+1] - X_num[,k+2]))); print("MAR") # 0.61
-# p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 4 + X_num[,k+2] / 4 - X_num[,k+3] / 4))); print("MAR") # 0.415
-# p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 4 + 1 / 4))); print("MAR") # 0.415
+# p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 2 + X_num[,k + 2] / 4 + X_num[,k + 4] / 4))); print("MAR") # 0.415
+# p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 2 + X_num[,k + 2] / 2))); print("MAR") # 0.415
+p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 2 + 1 / 4))); print("MAR") # 0.415
 
 # p_delta_ftn = function(k) 1 / (1 + exp(-(1 - X_num[,k] / 4 + 1 / 4 - Y_num[,k] / 4))); print("NMAR") # 0.415
 # p_delta_ftn = function(k) 1 / (1 + exp( -(1.5 + X_num[,k] + X_num[,k+1] - X_num[,k+2] - 5 * Y_num[,k]))); print("NMAR") # 0.561

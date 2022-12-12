@@ -71,7 +71,6 @@ res = foreach(simnum = 1:SIMNUM,
                 p_delta = sapply(1:q, p_delta_ftn)
                 
                 print(paste("mean(p_delta)", round(mean(p_delta), 5)))
-                
                 print(summary(p_delta))
                 
                 # p_delta = sapply(1:q, )
@@ -126,7 +125,7 @@ res = foreach(simnum = 1:SIMNUM,
                 # missForest ####
                 print("missForest starts")
                 comp_mF = missForest(cbind(X, Y))$ximp
-                y_mF = comp_mF[,(p+1):ncol(comp_mF)]
+                y_mF = comp_mF[,(p+1):ncol(comp_mF),drop = F]
                 y_mF = apply(y_mF, 2, as.numeric)
                 
                 theta_mF = apply(y_mF, 2, mean)
@@ -137,13 +136,7 @@ res = foreach(simnum = 1:SIMNUM,
                 
                 for(b in 1:B){
                   print(paste("b =", b))
-                  # select_x = sample(1:p, p_star, replace = F)
-                  
-                  cand_tmp = ncol(combn(min(c(p, 5)), p_star))
-                  select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
-                  # select_x = c(1, 2)
-                  # select_x = c(3, 4)
-                  # select_x = c(5, 6)
+                  select_x = select_x_B[,b]
 
                   # table(data.frame(cbind(X[,select_x], Y_ogn)), useNA = "ifany")
                   
@@ -231,8 +224,8 @@ res = foreach(simnum = 1:SIMNUM,
 
                     for(k in 1:q){
                       # tmp = c(1:p_star, k + p_star) # NMAR
-                      # tmp = c(1:p_star) # MAR
-                      tmp = c(k + p_star) # self-cencoring
+                      tmp = c(1:p_star) # MAR
+                      # tmp = c(k + p_star) # self-cencoring
                       
                       # print(delind[delind[,k] == 1,])
                       np1_hat = Reduce(`+`, n_hats[delind[,k,drop = F] == 1])
@@ -255,8 +248,8 @@ res = foreach(simnum = 1:SIMNUM,
                       # print(ydex)
                       for(l in 1:q){
                         # MARGIN = c(1:p_star, l + p_star)  # NMAR
-                        # MARGIN = c(1:p_star) # MAR
-                        MARGIN = c(l + p_star) # self-cencoring
+                        MARGIN = c(1:p_star) # MAR
+                        # MARGIN = c(l + p_star) # self-cencoring
                         
                         tmp <- sweep(tmp, MARGIN = MARGIN, Pdel_xy[[ydex[,l] + 1]][[l]], "*")
                       }
@@ -391,8 +384,8 @@ res = foreach(simnum = 1:SIMNUM,
                       log(sum(apply(cands, 1, function(k2) {
                         p_mat[t(k2)] * prod(sapply(1:q, function(l){
                           # texts = paste(k2[c(1:p_star, p_star + l)], collapse = ",") # NMAR
-                          # texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
-                          texts = paste(k2[c(p_star + l)], collapse = ",") # Self-censoring
+                          texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
+                          # texts = paste(k2[c(p_star + l)], collapse = ",") # Self-censoring
                           texts = paste("Pdel_xy[[ydex[,", l, "] + 1]][[", l, "]][", texts, "]")
                           # print(texts)
                           eval(parse(text = texts))
@@ -463,8 +456,8 @@ res = foreach(simnum = 1:SIMNUM,
                         p_tmp = apply(cands, 1, function(k2) {
                           p_mat[t(k2)] * prod(sapply(1:q, function(l){
                             # texts = paste(k2[c(1:p_star, p_star + l)], collapse = ",") # NMAR
-                            # texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
-                            texts = paste(k2[c(p_star + l)], collapse = ",") # Self-censoring
+                            texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
+                            # texts = paste(k2[c(p_star + l)], collapse = ",") # Self-censoring
                             texts = paste("Pdel_xy[[ydex[,", l, "] + 1]][[", l, "]][", texts, "]")
                             # print(texts)
                             eval(parse(text = texts))
