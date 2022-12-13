@@ -12,6 +12,7 @@ library(missForest)
 
 timenow0 = Sys.time()
 timenow = paste(timenow0, ".txt", sep = "")
+# timenow = "tmp.txt"
 
 writeLines(c(""), timenow)
 sink(timenow, append=TRUE)
@@ -19,14 +20,7 @@ sink(timenow, append=TRUE)
 source("par.R")
 source("cv.R")
 
-# p_Y2 = p_Y
-# p_Y2 = c((0.8 + p_Y1[1]) / 2, 0.8 * p_Y1[2] + 0.1, 0.9 - 0.5 * p_Y1[3], 0.6)
-# print(paste("p_Y2 =", paste(p_Y2, collapse = " ")))
-
-# theta2 = sum(p_x * p_Y2)
-# print(paste("theta2 =", theta2))
-
-# theta = c(theta1, theta2)
+lambda = 150
 
 res = foreach(simnum = 1:SIMNUM,
               .packages = c("mice", "missForest"),
@@ -39,16 +33,16 @@ res = foreach(simnum = 1:SIMNUM,
                 # Generate X and Y ####
                 
                 # is.factor(X[,1]) == FALSE: X can be high-dimensional
-                X_num = matrix(rep(1:k_x, n * p)[rmultinom(n * p, 1, p_x) == 1], nr = n, nc = p) 
+                # X_num = matrix(rep(1:k_x, n * p)[rmultinom(n * p, 1, p_x) == 1], nr = n, nc = p) 
+                X_num = sapply(1:p, function(k) c(1:k_x) %*% (rmultinom(n, 1, p_x[,k]) == 1))
                 colnames(X_num) <- paste("X", 1:p, sep = "")
                 
-                p_Y_mat = apply(X_num[,1:q, drop = F], 2, function(k) p_Y[k])
-                # p_Y_mat = apply((X_num[,1:q, drop = F] + X_num[,(1:q) * 2, drop = F] + X_num[,(1:q) * 3, drop = F]), 2, function(k) p_Y[k])
+                # p_Y_mat = apply(X_num[,1:q, drop = F], 2, function(k) p_Y[k])
+                p_Y_mat = sapply(1:q, function(k) p_Y[X_num[,k, drop = F], k])
                 colnames(p_Y_mat) <- paste("Y", 1:q, sep = "")
-                # p_Y_mat[,2] = rowSums(cbind((0.8 + Y1) / 2, 0.8 * Y1 + 0.1, 0.9 - 0.5 * Y1, 0.6) * model.matrix(~ 0 + as.factor(X[,1])))
                 
                 Y_num = apply(p_Y_mat, 2, function(k) rbinom(nrow(p_Y_mat), 1, k))
-                
+                # cov(X_num, Y_num)
                 # if(p > 20){
                 #   print("Y_num[,1] = ifelse(rowsum(X_num[,1:10]) %% 2 == 0, 0, 1)
                 #   Y_num[,2] = ifelse(apply(X_num[,seq(from = 11, to = 19, by = 2)] - X_num[,seq(from = 12, to = 20, by = 2)], 1, prod)
@@ -172,13 +166,13 @@ res = foreach(simnum = 1:SIMNUM,
                   z_b = cbind(x_num[bstp_idx,select_x], y_num[bstp_idx,, drop = F] + 1)
                   delta_b = delta_train[bstp_idx,, drop = F]
                   
-                  x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x]
-                  y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
-                  delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                  # x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x]
+                  # y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                  # delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
                   
-                  # x_oob = x_num[bstp_idx,select_x, drop = F]
-                  # y_oob = y_num[bstp_idx,, drop = F]
-                  # delta_obb = delta_train[bstp_idx,, drop = F]
+                  x_oob = x_num[bstp_idx,select_x, drop = F]
+                  y_oob = y_num[bstp_idx,, drop = F]
+                  delta_obb = delta_train[bstp_idx,, drop = F]
                   
                   # EM algorithm to compute \pi_{ijkl} ####
                   n_mat = table(data.frame(cbind(x_b, y_b)), useNA = "always")
@@ -361,7 +355,8 @@ res = foreach(simnum = 1:SIMNUM,
                   # hist(p_tmp_true[,4] - p_tmp_new[,4], freq  = F)
                   # ####
 
-                  p_mat = n_hat / nrow(x_b)
+                  p_mat0 = n_hat / nrow(x_b)
+                  p_mat = sweep(p_mat0, MARGIN = 1:q, apply(p_mat0, MARGIN = 1:q, sum), "/"); if(b == 1)print("Use P(Y | X) in the conditional likelihood")
                   
                   # Compute observed likelihood l_{obs}^{(b)} for each bag b ####
                   z_oob = cbind(x_oob, y_oob + 1)
@@ -418,9 +413,8 @@ res = foreach(simnum = 1:SIMNUM,
                   if(is.nan(l_obs)) next() 
                   
                   expl_obs = exp(lambda * l_obs)
-                  
-                  # print(paste("select_x =", select_x[1], select_x[2]))
-                  # print(paste("expl_obs =", expl_obs))
+                  print(paste("lambda =", lambda))
+                  print(paste("select_x =", paste(select_x))); print(paste("expl_obs =", expl_obs))
                   
                   # Find the conditional probabilities ####
                   # P(y_mis | y_obs, X_s^{(b)})
@@ -429,7 +423,7 @@ res = foreach(simnum = 1:SIMNUM,
                   for(k in 1:nrow(delind)){
                     MARGIN2 = c(1:p_star, ((p_star + 1):(p_star + q))[delind[k,,drop = F] == 1])
                     # print(MARGIN2)
-                    phats[[k]] <- sweep(p_mat, MARGIN = MARGIN2, apply(p_mat, MARGIN2, sum), FUN = "/") 
+                    phats[[k]] <- sweep(p_mat0, MARGIN = MARGIN2, apply(p_mat0, MARGIN2, sum), FUN = "/") 
                   }
                   
                   # sapply(phats, function(k) any(is.nan(k)))
@@ -454,7 +448,7 @@ res = foreach(simnum = 1:SIMNUM,
                         # print(cands)
                         # cands = t(z_sub[1,])
                         p_tmp = apply(cands, 1, function(k2) {
-                          p_mat[t(k2)] * prod(sapply(1:q, function(l){
+                          p_mat0[t(k2)] * prod(sapply(1:q, function(l){
                             # texts = paste(k2[c(1:p_star, p_star + l)], collapse = ",") # NMAR
                             texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
                             # texts = paste(k2[c(p_star + l)], collapse = ",") # Self-censoring
@@ -517,9 +511,9 @@ print(timenow2 - timenow0)
 for(k in 1:q){
   res_fin = sapply(res, function(x) x[,k])
   
-  BIAS = rowMeans(res_fin - theta)
+  BIAS = rowMeans(res_fin - theta[k])
   SE = apply(res_fin, 1, function(x) sqrt(var(x) * (length(x)-1)/length(x) ))
-  RMSE = apply(res_fin - theta, 1, function(x) sqrt(mean(x^2)))
+  RMSE = apply(res_fin - theta[k], 1, function(x) sqrt(mean(x^2)))
   
   tmp_tbl <- round(cbind(BIAS = BIAS, SE = SE, RMSE = RMSE), 4)
   print(tmp_tbl)

@@ -1,16 +1,17 @@
 # Generate X and Y ####
 
+
 # is.factor(X[,1]) == FALSE: X can be high-dimensional
-X_num = matrix(rep(1:k_x, n * p)[rmultinom(n * p, 1, p_x) == 1], nr = n, nc = p) 
+# X_num = matrix(rep(1:k_x, n * p)[rmultinom(n * p, 1, p_x) == 1], nr = n, nc = p) 
+X_num = sapply(1:p, function(k) c(1:k_x) %*% (rmultinom(n, 1, p_x[,k]) == 1))
 colnames(X_num) <- paste("X", 1:p, sep = "")
 
-p_Y_mat = apply(X_num[,1:q, drop = F], 2, function(k) p_Y[k])
-# p_Y_mat = apply((X_num[,1:q, drop = F] + X_num[,(1:q) * 2, drop = F] + X_num[,(1:q) * 3, drop = F]), 2, function(k) p_Y[k])
+# p_Y_mat = apply(X_num[,1:q, drop = F], 2, function(k) p_Y[k])
+p_Y_mat = sapply(1:q, function(k) p_Y[X_num[,k, drop = F], k])
 colnames(p_Y_mat) <- paste("Y", 1:q, sep = "")
-# p_Y_mat[,2] = rowSums(cbind((0.8 + Y1) / 2, 0.8 * Y1 + 0.1, 0.9 - 0.5 * Y1, 0.6) * model.matrix(~ 0 + as.factor(X[,1])))
 
 Y_num = apply(p_Y_mat, 2, function(k) rbinom(nrow(p_Y_mat), 1, k))
-
+print(cor(X_num, Y_num))
 # if(p > 20){
 #   print("Y_num[,1] = ifelse(rowsum(X_num[,1:10]) %% 2 == 0, 0, 1)
 #   Y_num[,2] = ifelse(apply(X_num[,seq(from = 11, to = 19, by = 2)] - X_num[,seq(from = 12, to = 20, by = 2)], 1, prod)
@@ -82,8 +83,8 @@ for (b in 1:B) {
   bstp_idx_B = cbind(bstp_idx_B, bstp_idx)
   
   # select_x = sample(1:p, p_star, replace = F); if(b == 1) print("random variable selection")
-  # cand_tmp = ncol(combn(min(c(p, 5)), p_star)); select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
-  cand_tmp = ncol(combn(p, p_star)); select_x = combn(p, p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
+  cand_tmp = ncol(combn(min(c(p, 5)), p_star)); select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
+  # cand_tmp = ncol(combn(p, p_star)); select_x = combn(p, p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
   select_x_B = cbind(select_x_B, select_x)
 }
 
@@ -158,13 +159,13 @@ res_lambda = foreach(lambda = lambda_vec,
                     z_b = cbind(x_num[bstp_idx,select_x], y_num[bstp_idx,, drop = F] + 1)
                     delta_b = delta_train[bstp_idx,, drop = F]
                     
-                    x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x]
-                    y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
-                    delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                    # x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x, drop = F]
+                    # y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                    # delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
                     
-                    # x_oob = x_num[bstp_idx,select_x, drop = F]
-                    # y_oob = y_num[bstp_idx,, drop = F]
-                    # delta_obb = delta_train[bstp_idx,, drop = F]
+                    x_oob = x_num[bstp_idx,select_x, drop = F]
+                    y_oob = y_num[bstp_idx,, drop = F]
+                    delta_obb = delta_train[bstp_idx,, drop = F]
                     
                     # EM algorithm to compute \pi_{ijkl} ####
                     n_mat = table(data.frame(cbind(x_b, y_b)), useNA = "always")
@@ -347,7 +348,9 @@ res_lambda = foreach(lambda = lambda_vec,
                     # hist(p_tmp_true[,4] - p_tmp_new[,4], freq  = F)
                     # ####
                     
-                    p_mat = n_hat / nrow(x_b)
+                    p_mat0 = n_hat / nrow(x_b)
+                    # p_mat = table(data.frame(cbind(X[,select_x], Y_ogn)), useNA = "ifany") / n;print("to be fixed")
+                    p_mat = sweep(p_mat0, MARGIN = 1:q, apply(p_mat0, MARGIN = 1:q, sum), "/"); if(b == 1)print("Use P(Y | X) in the conditional likelihood")
                     
                     # Compute observed likelihood l_{obs}^{(b)} for each bag b ####
                     z_oob = cbind(x_oob, y_oob + 1)
@@ -357,6 +360,27 @@ res_lambda = foreach(lambda = lambda_vec,
                       if(!is.na(x)) x
                       else c(1,2)
                     }
+                    
+                    # lik_seg_all = 0; print("to be fixed")
+                    # for(k in 1:nrow(delind)){
+                    #   ydex = delind[k,,drop = F]
+                    #   z_oob_sub = z_oob[apply(delta_obb, 1, function(id) all(id == ydex)),,drop = F]
+                    #   if(nrow(z_oob_sub) != 0){
+                    #     lik_seg = sum(apply(z_oob_sub, 1, function(rows){
+                    #       if(k != 1) cands = expand.grid(sapply(rows, tmpftn))
+                    #       else cands = t(rows)
+                    #       # print(cands)
+                    #       log(sum(apply(cands, 1, function(k2) {
+                    #         p_mat[t(k2)]
+                    #       })))
+                    #     }))
+                    # 
+                    #   }else{
+                    #     lik_seg = 0
+                    #   }
+                    #   print(lik_seg)
+                    #   lik_seg_all = lik_seg_all + lik_seg
+                    # }
                     
                     lik_seg_all = 0
                     for(k in 1:nrow(delind)){
@@ -374,31 +398,18 @@ res_lambda = foreach(lambda = lambda_vec,
                               # texts = paste(k2[c(p_star + l)], collapse = ",") # Self-censoring
                               texts = paste("Pdel_xy[[ydex[,", l, "] + 1]][[", l, "]][", texts, "]")
                               # print(texts)
+                              # print(eval(parse(text = texts)))
                               eval(parse(text = texts))
                             }  ))
-                            # if(p_mat[t(k2)] == 0){
-                            #   print(t(k2))
-                            #   stop()
-                            # } 
                           })))
                         }))
-                        # cands = expand.grid(sapply(z_oob_sub[1,], tmpftn))
-                        # log(sum(apply(cands, 1, function(k) {
-                        #   p_mat[t(k)] * prod(sapply(1:q, function(l){
-                        #     texts = paste(k[c(1:p_star, p_star + l)], collapse = ",")
-                        #     texts = paste("Pdel_xy[[ydex[,", l, "] + 1]][[", l, "]][", texts, "]")
-                        #     # print(texts)
-                        #     eval(parse(text = texts))
-                        #   }  ))
-                        # })))
-                        
+
                       }else{
                         lik_seg = 0
                       }
-                      # print(lik_seg)
+                      print(lik_seg)
                       lik_seg_all = lik_seg_all + lik_seg
                     }
-                    
                     
                     l_obs = sum(lik_seg_all) / nrow(z_oob) # observed likelihood
                     if(is.nan(l_obs)) next() 
@@ -406,8 +417,10 @@ res_lambda = foreach(lambda = lambda_vec,
                     expl_obs = exp(lambda * l_obs)
                     w_B = c(w_B, expl_obs)                  
                     print(paste("select_x =", paste(select_x))); print(paste("expl_obs =", expl_obs))
+                    # print(logLik(glm(y_oob ~ x_oob, family = binomial())))
+                    # print(logLik(glm(delta_obb[,1] ~ x_oob, family = binomial())))
                     
-                    p_mat_lambda = p_mat_lambda + expl_obs * apply(p_mat, c((p_star+ 1):(p_star + q)), sum)
+                    p_mat_lambda = p_mat_lambda + expl_obs * apply(p_mat0, c((p_star+ 1):(p_star + q)), sum)
                     
                   }
                   
@@ -439,6 +452,7 @@ res_lambda = foreach(lambda = lambda_vec,
                     # print(lik_seg)
                     lik_seg_all = lik_seg_all + lik_seg
                   }
+                  print(paste("lik(lambda) =", lik_seg_all))
                   
                   res_K = c(res_K, lik_seg_all)
                 }
