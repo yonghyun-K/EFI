@@ -20,7 +20,7 @@ sink(timenow, append=TRUE)
 source("par.R")
 source("cv.R")
 
-lambda = 150
+# lambda = 150
 
 res = foreach(simnum = 1:SIMNUM,
               .packages = c("mice", "missForest"),
@@ -134,8 +134,8 @@ res = foreach(simnum = 1:SIMNUM,
 
                   # table(data.frame(cbind(X[,select_x], Y_ogn)), useNA = "ifany")
                   
-                  n_mat_true = table(data.frame(cbind(X_mice[,select_x], y_mice, delta)), useNA = "ifany"); if(b == 1) print("use MICE for initial values")
-                  # n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany"); if(b == 1) print("use full data for initial values")
+                  # n_mat_true = table(data.frame(cbind(X_mice[,select_x], y_mice, delta)), useNA = "ifany"); if(b == 1) print("use MICE for initial values")
+                  n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany"); if(b == 1) print("use full data for initial values")
                   # summary(data.frame(cbind(X[,select_x], Y_ogn, delta)))
 
                   expand_txt = paste(paste(rep("c(1,0)", q)), collapse = ",")
@@ -166,13 +166,13 @@ res = foreach(simnum = 1:SIMNUM,
                   z_b = cbind(x_num[bstp_idx,select_x], y_num[bstp_idx,, drop = F] + 1)
                   delta_b = delta_train[bstp_idx,, drop = F]
                   
-                  # x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x]
-                  # y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
-                  # delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                  x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x]
+                  y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                  delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
                   
-                  x_oob = x_num[bstp_idx,select_x, drop = F]
-                  y_oob = y_num[bstp_idx,, drop = F]
-                  delta_obb = delta_train[bstp_idx,, drop = F]
+                  # x_oob = x_num[bstp_idx,select_x, drop = F]
+                  # y_oob = y_num[bstp_idx,, drop = F]
+                  # delta_obb = delta_train[bstp_idx,, drop = F]
                   
                   # EM algorithm to compute \pi_{ijkl} ####
                   n_mat = table(data.frame(cbind(x_b, y_b)), useNA = "always")

@@ -1,11 +1,11 @@
 # Simulation  setup ####
-n = 200
+n = 2000
 print(paste("n(Sample size) =", n))
 
-n_B = 150
+n_B = 1500
 print(paste("n_B(Bootstrap sample size) =", n_B))
 
-p = 50
+p = 10
 print(paste("p =", p))
 
 p_star = 2
@@ -76,13 +76,13 @@ print("theta = "); print(theta)
 # p_delta_ftn = function(k) 1 / (1 + exp(-(X_num[,k] + X_num[,k+1] - X_num[,k+2]))); print("MAR") # 0.8
 # p_delta_ftn = function(k) 1 / (1 + exp(-(-1 + X_num[,k] + X_num[,k+1] - X_num[,k+2]))); print("MAR") # 0.61
 # p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 2 + X_num[,k + 2] / 4 + X_num[,k + 4] / 4))); print("MAR") # 0.415
-p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 2 + X_num[,k + 2] / 2))); print("MAR") # 0.415
+# p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 2 + X_num[,k + 2] / 2))); print("MAR") # 0.415
 # p_delta_ftn = function(k) 1 / (1 + exp(-(X_num[,k] / 2 - 1 / 4))); print("MAR") # 0.415
 
 # p_delta_ftn = function(k) 1 / (1 + exp(-(1 - X_num[,k] / 4 + 1 / 4 - Y_num[,k] / 4))); print("NMAR") # 0.415
 # p_delta_ftn = function(k) 1 / (1 + exp( -(1.5 + X_num[,k] + X_num[,k+1] - X_num[,k+2] - 5 * Y_num[,k]))); print("NMAR") # 0.561
 # p_delta_ftn = function(k) 1 / (1 + exp( -(X_num[,k] + X_num[,k+1] - 5 * Y_num[,k]))); print("NMAR")
-# p_delta_ftn = function(k) 1 / (1 + exp( -( X_num[,k] / 4 - Y_num[,k] / 4))); print("NMAR")
+p_delta_ftn = function(k) 1 / (1 + exp( -( X_num[,k] / 4 - Y_num[,k] / 4))); print("NMAR")
 # p_delta_ftn = function(k) 1 / (1 + exp( -(Y_num[,k] / 4))); print("NMAR")
 
 print("p_delta_ftn")
