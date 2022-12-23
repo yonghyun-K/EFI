@@ -13,6 +13,7 @@ using model weights.
 ## Externel Links
 
 - [mice](https://github.com/amices/mice)
+- https://stefvanbuuren.name/fimd/
 
 - [missForest](https://github.com/stekhoven/missForest)
 
