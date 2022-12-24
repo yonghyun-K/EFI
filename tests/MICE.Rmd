@@ -1,0 +1,100 @@
+---
+title: "MICE and high dimensional data"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r message=FALSE, include=FALSE}
+library(mice)
+```
+
+
+```{r}
+n = 2000 # Sample size
+p = 10 # Dimension of X
+q = 2 # Dimension of Y
+k_x = 2 # k_x(Number of categories of X)
+SIMNUM = 30
+print(paste("k_x(Number of categories of X) =", k_x))
+
+p_x = sapply(1:p, function(x) runif(k_x, min = 0.25, max = 0.75))
+p_x = sweep(p_x, MARGIN = 2, apply(p_x, 2, sum), "/")
+print("p_x = "); print(p_x)
+
+p_Y = sapply(1:q, function(x) {
+  while(T){
+    tmp = runif(k_x, min = 0.1, max = 0.6) 
+    if(max(tmp) - min(tmp) > 0.4) break
+  }
+  return(tmp)
+})
+print("p_Y = "); print(p_Y)
+
+theta = colSums(p_x[,1:q] * p_Y)
+
+res = list()
+for(simnum in 1:SIMNUM){
+  print(simnum)
+  X_num = sapply(1:p, function(k) c(1:k_x) %*% (rmultinom(n, 1, p_x[,k]) == 1))
+  colnames(X_num) <- paste("X", 1:p, sep = "")
+  
+  p_Y_mat = sapply(1:q, function(k) p_Y[X_num[,k, drop = F], k])
+  colnames(p_Y_mat) <- paste("Y", 1:q, sep = "")
+  Y_num = apply(p_Y_mat, 2, function(k) rbinom(nrow(p_Y_mat), 1, k))
+  Y = data.frame(Y_num)
+  for(k in 1:q){
+    Y[[k]] = factor(Y[[k]])
+  }
+  
+  theta_full = colMeans(Y_num)
+  
+  p_delta_ftn = function(k) 1 / (1 + exp(-(X_num[,k] / 2 - 1 / 4))); if(simnum == 1) print("MAR")
+  p_delta = sapply(1:q, p_delta_ftn)
+  
+  delta_num = apply(p_delta, 2, function(k) rbinom(nrow(p_delta), 1, k))
+  delta = data.frame(delta_num)
+  for(k in 1:q){
+    delta[[k]] = factor(delta[[k]])
+  }
+  colnames(delta) <- paste("delta", 1:q, sep = "")
+  Y[delta == 0] = NA
+  Y_num[delta == 0] = NA
+  
+  theta_cc = colMeans(Y_num, na.rm = T)
+  
+  X = data.frame(X_num)
+  for(k in 1:p){
+    X[[k]] = factor(X[[k]])
+  }
+  
+  imp <- mice(cbind(X, Y), printFlag = FALSE)
+  comp_mice = complete(imp,1:5)
+  y_mice = comp_mice[,(p+1):ncol(comp_mice)]
+  theta_mice = apply(y_mice, 2, function(x) mean(x == 1))
+  
+  res[[simnum]] = rbind(theta_full, theta_cc, theta_mice)
+}
+
+for(k in 1:q){
+  res_fin = sapply(res, function(x) x[,k])
+  
+  BIAS = rowMeans(res_fin - theta[k])
+  SE = apply(res_fin, 1, function(x) sqrt(var(x) * (length(x)-1)/length(x) ))
+  RMSE = apply(res_fin - theta[k], 1, function(x) sqrt(mean(x^2)))
+  
+  tmp_tbl <- round(cbind(BIAS = BIAS, SE = SE, RMSE = RMSE), 4)
+  print(tmp_tbl)
+  # xtable::xtable(tmp_tbl, digits = 4)
+}
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
