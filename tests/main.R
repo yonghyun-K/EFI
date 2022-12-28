@@ -134,8 +134,8 @@ res = foreach(simnum = 1:SIMNUM,
 
                   # table(data.frame(cbind(X[,select_x], Y_ogn)), useNA = "ifany")
                   
-                  # n_mat_true = table(data.frame(cbind(X_mice[,select_x], y_mice, delta)), useNA = "ifany"); if(b == 1) print("use MICE for initial values")
-                  n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany"); if(b == 1) print("use full data for initial values")
+                  n_mat_true = table(data.frame(cbind(X_mice[,select_x], y_mice, delta)), useNA = "ifany"); if(b == 1) print("use MICE for initial values")
+                  # n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany"); if(b == 1) print("use full data for initial values")
                   # summary(data.frame(cbind(X[,select_x], Y_ogn, delta)))
 
                   expand_txt = paste(paste(rep("c(1,0)", q)), collapse = ",")
@@ -217,9 +217,10 @@ res = foreach(simnum = 1:SIMNUM,
                     Pdel0_xy = vector(mode = "list", length = q) # P(delta_j = 0 | x, y_j)
 
                     for(k in 1:q){
-                      # tmp = c(1:p_star, k + p_star) # NMAR
-                      tmp = c(1:p_star) # MAR
-                      # tmp = c(k + p_star) # self-cencoring
+                      
+                      if(misstype == "NMAR") tmp = c(1:p_star, k + p_star)
+                      else if(misstype == "MAR") tmp = c(1:p_star)
+                      else if(misstype == "SCens") tmp = c(k + p_star)
                       
                       # print(delind[delind[,k] == 1,])
                       np1_hat = Reduce(`+`, n_hats[delind[,k,drop = F] == 1])
@@ -241,9 +242,9 @@ res = foreach(simnum = 1:SIMNUM,
                       tmp <- Py_x
                       # print(ydex)
                       for(l in 1:q){
-                        # MARGIN = c(1:p_star, l + p_star)  # NMAR
-                        MARGIN = c(1:p_star) # MAR
-                        # MARGIN = c(l + p_star) # self-cencoring
+                        if(misstype == "NMAR") MARGIN = c(1:p_star, l + p_star)
+                        else if(misstype == "MAR") MARGIN = c(1:p_star)
+                        else if(misstype == "SCens") MARGIN = c(l + p_star)
                         
                         tmp <- sweep(tmp, MARGIN = MARGIN, Pdel_xy[[ydex[,l] + 1]][[l]], "*")
                       }
@@ -378,9 +379,10 @@ res = foreach(simnum = 1:SIMNUM,
                       # print(cands)
                       log(sum(apply(cands, 1, function(k2) {
                         p_mat[t(k2)] * prod(sapply(1:q, function(l){
-                          # texts = paste(k2[c(1:p_star, p_star + l)], collapse = ",") # NMAR
-                          texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
-                          # texts = paste(k2[c(p_star + l)], collapse = ",") # Self-censoring
+                          if(misstype == "NMAR") texts = paste(k2[c(1:p_star, p_star + l)], collapse = ",")
+                          else if(misstype == "MAR") texts = paste(k2[c(1:p_star)], collapse = ",")
+                          else if(misstype == "SCens") texts = paste(k2[c(p_star + l)], collapse = ",")
+                          
                           texts = paste("Pdel_xy[[ydex[,", l, "] + 1]][[", l, "]][", texts, "]")
                           # print(texts)
                           eval(parse(text = texts))
@@ -449,9 +451,10 @@ res = foreach(simnum = 1:SIMNUM,
                         # cands = t(z_sub[1,])
                         p_tmp = apply(cands, 1, function(k2) {
                           p_mat0[t(k2)] * prod(sapply(1:q, function(l){
-                            # texts = paste(k2[c(1:p_star, p_star + l)], collapse = ",") # NMAR
-                            texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
-                            # texts = paste(k2[c(p_star + l)], collapse = ",") # Self-censoring
+                            if(misstype == "NMAR") texts = paste(k2[c(1:p_star, p_star + l)], collapse = ",")
+                            else if(misstype == "MAR") texts = paste(k2[c(1:p_star)], collapse = ",")
+                            else if(misstype == "SCens") texts = paste(k2[c(p_star + l)], collapse = ",")
+                            
                             texts = paste("Pdel_xy[[ydex[,", l, "] + 1]][[", l, "]][", texts, "]")
                             # print(texts)
                             eval(parse(text = texts))
@@ -484,7 +487,7 @@ res = foreach(simnum = 1:SIMNUM,
                 
                 if(sum(w_B) == 0){
                   warning(sum(w_B) == 0)
-                  next
+                  return(NULL)
                 }
                 
                 z_imp_res = z_imp_res / sum(w_B)

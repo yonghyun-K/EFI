@@ -82,8 +82,8 @@ for (b in 1:B) {
   bstp_idx = sample(1:((1 - 1 / K) * n), n_B, replace = TRUE)
   bstp_idx_B = cbind(bstp_idx_B, bstp_idx)
   
-  # select_x = sample(1:p, p_star, replace = F); if(b == 1) print("random variable selection")
-  cand_tmp = ncol(combn(min(c(p, 5)), p_star)); select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
+  select_x = sample(1:p, p_star, replace = F); if(b == 1) print("random variable selection")
+  # cand_tmp = ncol(combn(min(c(p, 5)), p_star)); select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
   # cand_tmp = ncol(combn(p, p_star)); select_x = combn(p, p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
   select_x_B = cbind(select_x_B, select_x)
 }
@@ -126,8 +126,8 @@ res_lambda = foreach(lambda = lambda_vec,
                     
                     # table(data.frame(cbind(X[,select_x], Y_ogn)), useNA = "ifany")
                     
-                    # n_mat_true = table(data.frame(cbind(X_mice[,select_x], y_mice, delta)), useNA = "ifany"); if(b == 1) print("use MICE for initial values")
-                    n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany"); if(b == 1) print("use full data for initial values")
+                    n_mat_true = table(data.frame(cbind(X_mice[,select_x], y_mice, delta)), useNA = "ifany"); if(b == 1) print("use MICE for initial values")
+                    # n_mat_true = table(data.frame(cbind(X[,select_x], Y_ogn, delta)), useNA = "ifany"); if(b == 1) print("use full data for initial values")
                     # summary(data.frame(cbind(X[,select_x], Y_ogn, delta)))
                     
                     expand_txt = paste(paste(rep("c(1,0)", q)), collapse = ",")
@@ -210,9 +210,9 @@ res_lambda = foreach(lambda = lambda_vec,
                       Pdel0_xy = vector(mode = "list", length = q) # P(delta_j = 0 | x, y_j)
                       
                       for(k in 1:q){
-                        # tmp = c(1:p_star, k + p_star) # NMAR
-                        tmp = c(1:p_star) # MAR
-                        # tmp = c(k + p_star) # self-cencoring
+                        if(misstype == "NMAR") tmp = c(1:p_star, k + p_star)
+                        else if(misstype == "MAR") tmp = c(1:p_star)
+                        else if(misstype == "SCens") tmp = c(k + p_star)
                         
                         # print(delind[delind[,k] == 1,])
                         np1_hat = Reduce(`+`, n_hats[delind[,k,drop = F] == 1])
@@ -234,9 +234,10 @@ res_lambda = foreach(lambda = lambda_vec,
                         tmp <- Py_x
                         # print(ydex)
                         for(l in 1:q){
-                          # MARGIN = c(1:p_star, l + p_star)  # NMAR
-                          MARGIN = c(1:p_star) # MAR
-                          # MARGIN = c(l + p_star) # self-cencoring
+                          
+                          if(misstype == "NMAR") MARGIN = c(1:p_star, l + p_star)
+                          else if(misstype == "MAR") MARGIN = c(1:p_star)
+                          else if(misstype == "SCens") MARGIN = c(l + p_star)
                           
                           tmp <- sweep(tmp, MARGIN = MARGIN, Pdel_xy[[ydex[,l] + 1]][[l]], "*")
                         }
@@ -393,9 +394,10 @@ res_lambda = foreach(lambda = lambda_vec,
                           # print(cands)
                           log(sum(apply(cands, 1, function(k2) {
                             p_mat[t(k2)] * prod(sapply(1:q, function(l){
-                              # texts = paste(k2[c(1:p_star, p_star + l)], collapse = ",") # NMAR
-                              texts = paste(k2[c(1:p_star)], collapse = ",") # MAR
-                              # texts = paste(k2[c(p_star + l)], collapse = ",") # Self-censoring
+                              if(misstype == "NMAR") texts = paste(k2[c(1:p_star, p_star + l)], collapse = ",")
+                              else if(misstype == "MAR") texts = paste(k2[c(1:p_star)], collapse = ",")
+                              else if(misstype == "SCens") texts = paste(k2[c(p_star + l)], collapse = ",")
+                              
                               texts = paste("Pdel_xy[[ydex[,", l, "] + 1]][[", l, "]][", texts, "]")
                               # print(texts)
                               # print(eval(parse(text = texts)))
@@ -407,7 +409,7 @@ res_lambda = foreach(lambda = lambda_vec,
                       }else{
                         lik_seg = 0
                       }
-                      print(lik_seg)
+                      # print(lik_seg)
                       lik_seg_all = lik_seg_all + lik_seg
                     }
                     
@@ -426,7 +428,7 @@ res_lambda = foreach(lambda = lambda_vec,
                   
                   if(sum(w_B) == 0){
                     warning(sum(w_B) == 0)
-                    next
+                    return(NULL)
                   }
                   
                   p_mat_lambda = p_mat_lambda / sum(w_B)
@@ -465,6 +467,9 @@ lmabda_max = lambda_vec[which.max(res_lambda)]
 print(paste("lmabda_max =", lmabda_max))
 lambda = lmabda_max
 
-png(filename=paste(timenow0, ".png", sep = ""))
-plot(lambda_vec, res_lambda)
-dev.off()
+if(length(lambda_vec) == length(res_lambda)){
+  png(filename=paste(timenow0, ".png", sep = ""))
+  plot(lambda_vec, res_lambda)
+  dev.off()
+}
+
