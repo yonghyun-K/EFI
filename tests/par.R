@@ -2,16 +2,16 @@
 n = 200
 print(paste("n(Sample size) =", n))
 
-n_B = 150
+n_B = 200
 print(paste("n_B(Bootstrap sample size) =", n_B))
 
-p = 50
+p = 2
 print(paste("p =", p))
 
-p_star = 2
+p_star = 1
 print(paste("p_star =", p_star))
 
-q = 2
+q = 1
 print(paste("q =", q))
 
 B = 100
@@ -73,7 +73,7 @@ misstype = "MAR"
 # misstype = "SCens"
 print(paste("misstype =", misstype))
 
-# p_delta_ftn = function(k) rep(0.5, n); print("MCAR") # 0.5
+p_delta_ftn = function(k) rep(0.5, n); print("MCAR") # 0.5
 
 # p_delta_ftn = function(k) X_num[,k] / 5 + 0.2; print("MAR")# 0.5
  # p_delta_ftn = function(k) X_num[,k] / 3 + 1/3; print("MAR") # 0.84
@@ -82,7 +82,7 @@ print(paste("misstype =", misstype))
 # p_delta_ftn = function(k) 1 / (1 + exp(-(-1 + X_num[,k] + X_num[,k+1] - X_num[,k+2]))); print("MAR") # 0.61
 # p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 2 + X_num[,k + 2] / 4 + X_num[,k + 4] / 4))); print("MAR") # 0.415
 # p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 2 + X_num[,k + 2] / 2))); print("MAR") # 0.415
-p_delta_ftn = function(k) 1 / (1 + exp(-(X_num[,k] / 2 - 1 / 4))); print("MAR") # 0.415
+# p_delta_ftn = function(k) 1 / (1 + exp(-(X_num[,k] / 2 - 1 / 4))); print("MAR") # 0.415
 
 # p_delta_ftn = function(k) 1 / (1 + exp(-(1 - X_num[,k] / 4 + 1 / 4 - Y_num[,k] / 4))); print("NMAR") # 0.415
 # p_delta_ftn = function(k) 1 / (1 + exp( -(1.5 + X_num[,k] + X_num[,k+1] - X_num[,k+2] - 5 * Y_num[,k]))); print("NMAR") # 0.561

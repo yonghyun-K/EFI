@@ -12,7 +12,7 @@ library(missForest)
 
 timenow0 = Sys.time()
 timenow = paste(timenow0, ".txt", sep = "")
-# timenow = "tmp.txt"
+# timenow = "tmp.txt"; print("to be fixed: tmp.txt")
 
 writeLines(c(""), timenow)
 sink(timenow, append=TRUE)
@@ -20,7 +20,7 @@ sink(timenow, append=TRUE)
 source("par.R")
 source("cv.R")
 
-# lambda = 150
+# lambda = 1
 
 res = foreach(simnum = 1:SIMNUM,
               .packages = c("mice", "missForest"),
@@ -166,13 +166,15 @@ res = foreach(simnum = 1:SIMNUM,
                   z_b = cbind(x_num[bstp_idx,select_x], y_num[bstp_idx,, drop = F] + 1)
                   delta_b = delta_train[bstp_idx,, drop = F]
                   
-                  x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x]
-                  y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
-                  delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
-                  
-                  # x_oob = x_num[bstp_idx,select_x, drop = F]
-                  # y_oob = y_num[bstp_idx,, drop = F]
-                  # delta_obb = delta_train[bstp_idx,, drop = F]
+                  if(n <= n_B){
+                    x_oob = x_num[bstp_idx,select_x, drop = F]
+                    y_oob = y_num[bstp_idx,, drop = F]
+                    delta_obb = delta_train[bstp_idx,, drop = F]
+                  }else{
+                    x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x, drop = F]
+                    y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                    delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                  }
                   
                   # EM algorithm to compute \pi_{ijkl} ####
                   n_mat = table(data.frame(cbind(x_b, y_b)), useNA = "always")
@@ -359,6 +361,8 @@ res = foreach(simnum = 1:SIMNUM,
                   p_mat0 = n_hat / nrow(x_b)
                   p_mat = sweep(p_mat0, MARGIN = 1:q, apply(p_mat0, MARGIN = 1:q, sum), "/"); if(b == 1)print("Use P(Y | X) in the conditional likelihood")
                   
+                  # print(p_mat)
+                  
                   # Compute observed likelihood l_{obs}^{(b)} for each bag b ####
                   z_oob = cbind(x_oob, y_oob + 1)
                   # table(data.frame(delta_obb))
@@ -371,7 +375,7 @@ res = foreach(simnum = 1:SIMNUM,
                   lik_seg_all = 0
                   for(k in 1:nrow(delind)){
                     ydex = delind[k,,drop = F]
-                    z_oob_sub = z_oob[apply(delta_obb, 1, function(id) all(id == ydex)),]
+                    z_oob_sub = z_oob[apply(delta_obb, 1, function(id) all(id == ydex)),,drop = F]
                     if(nrow(z_oob_sub) != 0){
                     lik_seg = sum(apply(z_oob_sub, 1, function(rows){
                       if(k != 1) cands = expand.grid(sapply(rows, tmpftn))
@@ -412,7 +416,7 @@ res = foreach(simnum = 1:SIMNUM,
 
                   
                   l_obs = sum(lik_seg_all) / nrow(z_oob) # observed likelihood
-                  if(is.nan(l_obs)) next() 
+                  if(is.nan(l_obs)) result = NA
                   
                   expl_obs = exp(lambda * l_obs)
                   print(paste("lambda =", lambda))
@@ -482,29 +486,31 @@ res = foreach(simnum = 1:SIMNUM,
                     z_imp_res = z_imp_res + expl_obs * as.matrix(z_imp)
                   }
                   
-                  if(any(is.nan(z_imp_res))) stop("any(is.nan(z_imp_res))")
+                  if(any(is.nan(z_imp_res))) result = NA
                 }
                 
                 if(sum(w_B) == 0){
                   warning(sum(w_B) == 0)
-                  return(NULL)
+                  result = NA
+                }else{
+                  z_imp_res = z_imp_res / sum(w_B)
+                  
+                  wcol = p_star + q + 1
+                  
+                  # print(paste("sum(z_imp_res[,5]) = ", sum(z_imp_res[,wcol])))
+                  
+                  theta_prop = colSums(z_imp_res[,(p_star+1):(p_star+q) ,drop = F] * z_imp_res[,wcol]) / sum(z_imp_res[,wcol]) - 1
+                  
+                  theta_full
+                  
+                  # print(theta_prop)
+                  
+                  theta_cc = colMeans(y_num, na.rm = T)
+                  
+                  result = rbind(theta_full, theta_cc, theta_mice, theta_mF, theta_prop)
                 }
                 
-                z_imp_res = z_imp_res / sum(w_B)
-                
-                wcol = p_star + q + 1
-                
-                # print(paste("sum(z_imp_res[,5]) = ", sum(z_imp_res[,wcol])))
-                
-                theta_prop = colSums(z_imp_res[,(p_star+1):(p_star+q) ,drop = F] * z_imp_res[,wcol]) / sum(z_imp_res[,wcol]) - 1
-                
-                theta_full
-                
-                # print(theta_prop)
-                
-                theta_cc = colMeans(y_num, na.rm = T)
-                
-                rbind(theta_full, theta_cc, theta_mice, theta_mF, theta_prop)
+                result
                 
               }
 

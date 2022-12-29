@@ -82,9 +82,12 @@ for (b in 1:B) {
   bstp_idx = sample(1:((1 - 1 / K) * n), n_B, replace = TRUE)
   bstp_idx_B = cbind(bstp_idx_B, bstp_idx)
   
-  select_x = sample(1:p, p_star, replace = F); if(b == 1) print("random variable selection")
-  # cand_tmp = ncol(combn(min(c(p, 5)), p_star)); select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
-  # cand_tmp = ncol(combn(p, p_star)); select_x = combn(p, p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
+  if(b == 1) select_x = 1:p_star
+  else{
+    # select_x = sample(1:p, p_star, replace = F); if(b == 1) print("random variable selection")
+    # cand_tmp = ncol(combn(min(c(p, 5)), p_star)); select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
+    cand_tmp = ncol(combn(p, p_star)); select_x = combn(p, p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
+  }
   select_x_B = cbind(select_x_B, select_x)
 }
 
@@ -159,14 +162,16 @@ res_lambda = foreach(lambda = lambda_vec,
                     z_b = cbind(x_num[bstp_idx,select_x], y_num[bstp_idx,, drop = F] + 1)
                     delta_b = delta_train[bstp_idx,, drop = F]
                     
-                    x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x, drop = F]
-                    y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
-                    delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
-                    
-                    # x_oob = x_num[bstp_idx,select_x, drop = F]
-                    # y_oob = y_num[bstp_idx,, drop = F]
-                    # delta_obb = delta_train[bstp_idx,, drop = F]
-                    
+                    if(n <= n_B){
+                      x_oob = x_num[bstp_idx,select_x, drop = F]
+                      y_oob = y_num[bstp_idx,, drop = F]
+                      delta_obb = delta_train[bstp_idx,, drop = F]
+                    }else{
+                      x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x, drop = F]
+                      y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                      delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                    }
+
                     # EM algorithm to compute \pi_{ijkl} ####
                     n_mat = table(data.frame(cbind(x_b, y_b)), useNA = "always")
                     # n_mat = table(data.frame(cbind(x, y)), useNA = "always"); if(b == 1) print("n_mat uses full data: it should be corrected")
@@ -465,7 +470,7 @@ res_lambda = foreach(lambda = lambda_vec,
 res_lambda = unlist(res_lambda)
 lmabda_max = lambda_vec[which.max(res_lambda)]
 print(paste("lmabda_max =", lmabda_max))
-lambda = lmabda_max
+lambda = lmabda_max * 0.99
 
 if(length(lambda_vec) == length(res_lambda)){
   png(filename=paste(timenow0, ".png", sep = ""))
