@@ -5,7 +5,7 @@ print(paste("n(Sample size) =", n))
 n_B = 200
 print(paste("n_B(Bootstrap sample size) =", n_B))
 
-p = 2
+p = 10
 print(paste("p =", p))
 
 p_star = 1
@@ -14,7 +14,7 @@ print(paste("p_star =", p_star))
 q = 1
 print(paste("q =", q))
 
-B = 100
+B = p
 print(paste("B(The number of bootstraps) =", B))
 
 SIMNUM = round(min(c(detectCores() / 3 * 2, 100)))
@@ -69,8 +69,8 @@ theta = colSums(p_x[,1:q] * p_Y)
 print("theta = "); print(theta)
 
 # misstype = "NMAR"
-misstype = "MAR"
-# misstype = "SCens"
+# misstype = "MAR"
+misstype = "SCens"
 print(paste("misstype =", misstype))
 
 p_delta_ftn = function(k) rep(0.5, n); print("MCAR") # 0.5
@@ -83,6 +83,7 @@ p_delta_ftn = function(k) rep(0.5, n); print("MCAR") # 0.5
 # p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 2 + X_num[,k + 2] / 4 + X_num[,k + 4] / 4))); print("MAR") # 0.415
 # p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 2 + X_num[,k + 2] / 2))); print("MAR") # 0.415
 # p_delta_ftn = function(k) 1 / (1 + exp(-(X_num[,k] / 2 - 1 / 4))); print("MAR") # 0.415
+# p_delta_ftn = function(k) 1 / (1 + exp(-(X_num[,k+1] / 2 - 1 / 4))); print("MAR") # 0.415
 
 # p_delta_ftn = function(k) 1 / (1 + exp(-(1 - X_num[,k] / 4 + 1 / 4 - Y_num[,k] / 4))); print("NMAR") # 0.415
 # p_delta_ftn = function(k) 1 / (1 + exp( -(1.5 + X_num[,k] + X_num[,k+1] - X_num[,k+2] - 5 * Y_num[,k]))); print("NMAR") # 0.561

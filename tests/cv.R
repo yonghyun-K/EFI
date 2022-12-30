@@ -71,8 +71,8 @@ print("MICE starts")
 imp <- mice(cbind(X, Y_num), printFlag = FALSE)
 
 comp_mice = complete(imp,1:5)
-X_mice = comp_mice[,1:p]
-y_mice = comp_mice[,(p+1):ncol(comp_mice)]
+X_mice = comp_mice[,1:p,drop = F]
+y_mice = comp_mice[,(p+1):ncol(comp_mice),drop = F]
 
 K = 10
 
@@ -112,10 +112,10 @@ res_lambda = foreach(lambda = lambda_vec,
                   
                   names(train_idx) = NULL
 
-                  x = X[train_idx,]
+                  x = X[train_idx,,drop = F]
                   y = Y[train_idx,, drop = F]
                   delta_train = delta[train_idx,, drop = F]
-                  x_num = X_num[train_idx,]
+                  x_num = X_num[train_idx,,drop = F]
                   y_num = Y_num[train_idx,, drop = F]
                   
                   y_test = Y_num[test_idx,, drop = F]

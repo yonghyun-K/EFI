@@ -20,7 +20,7 @@ sink(timenow, append=TRUE)
 source("par.R")
 source("cv.R")
 
-# lambda = 1
+# lambda = 400
 
 res = foreach(simnum = 1:SIMNUM,
               .packages = c("mice", "missForest"),
@@ -29,6 +29,8 @@ res = foreach(simnum = 1:SIMNUM,
                 
                 if(simnum == 1) sink(timenow, append=TRUE)
                 print(paste("simnum =", simnum))
+                
+                set.seed(simnum)
                 
                 # Generate X and Y ####
                 
@@ -85,6 +87,7 @@ res = foreach(simnum = 1:SIMNUM,
                 Y_ogn = Y
                 
                 theta_full = colMeans(Y_num)
+                print(paste("theta_full", theta_full))
                 
                 # is.factor(Y[,1]) == TRUE: Y is low-dimensional and saved as factors.
                 Y[delta == 0] = NA
@@ -98,10 +101,10 @@ res = foreach(simnum = 1:SIMNUM,
                 }
                 
                 train_idx = 1:n
-                x = X[train_idx,]
+                x = X[train_idx,,drop = F]
                 y = Y[train_idx,, drop = F]
                 delta_train = delta[train_idx,, drop = F]
-                x_num = X_num[train_idx,]
+                x_num = X_num[train_idx,,drop = F]
                 y_num = Y_num[train_idx,, drop = F]
                 
                 # MICE ####
@@ -113,13 +116,13 @@ res = foreach(simnum = 1:SIMNUM,
                 })
                 
                 comp_mice = complete(imp,1:5)
-                X_mice = comp_mice[,1:p]
-                y_mice = comp_mice[,(p+1):ncol(comp_mice)]
+                X_mice = comp_mice[,1:p,drop = F]
+                y_mice = comp_mice[,(p+1):ncol(comp_mice),drop = F]
                 
                 # missForest ####
                 print("missForest starts")
-                comp_mF = missForest(cbind(X, Y))$ximp
-                y_mF = comp_mF[,(p+1):ncol(comp_mF),drop = F]
+                comp_mF = missForest(cbind(X, Y,1))$ximp
+                y_mF = comp_mF[,(p+1):(p + q),drop = F]
                 y_mF = apply(y_mF, 2, as.numeric)
                 
                 theta_mF = apply(y_mF, 2, mean)
@@ -507,6 +510,8 @@ res = foreach(simnum = 1:SIMNUM,
                   
                   theta_cc = colMeans(y_num, na.rm = T)
                   
+                  print(paste("theta_cc = ", theta_cc))
+                  
                   result = rbind(theta_full, theta_cc, theta_mice, theta_mF, theta_prop)
                 }
                 
@@ -516,6 +521,8 @@ res = foreach(simnum = 1:SIMNUM,
 
 timenow2 = Sys.time()
 print(timenow2 - timenow0)
+
+print(paste("length(res) =", length(res)))
 
 for(k in 1:q){
   res_fin = sapply(res, function(x) x[,k])
