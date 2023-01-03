@@ -40,7 +40,9 @@ res = foreach(simnum = 1:SIMNUM,
                 colnames(X_num) <- paste("X", 1:p, sep = "")
                 
                 # p_Y_mat = apply(X_num[,1:q, drop = F], 2, function(k) p_Y[k])
-                p_Y_mat = sapply(1:q, function(k) p_Y[X_num[,k, drop = F], k])
+                # p_Y_mat = sapply(1:q, function(k) p_Y[X_num[,k, drop = F], k])
+                p_Y_mat = sapply(1:q, function(k) (p_Y[X_num[,k, drop = F], k] + p_Y[X_num[,k+1, drop = F], k] + p_Y[X_num[,k+2, drop = F], k]) / 3)
+                
                 colnames(p_Y_mat) <- paste("Y", 1:q, sep = "")
                 
                 Y_num = apply(p_Y_mat, 2, function(k) rbinom(nrow(p_Y_mat), 1, k))
@@ -118,6 +120,27 @@ res = foreach(simnum = 1:SIMNUM,
                 comp_mice = complete(imp,1:5)
                 X_mice = comp_mice[,1:p,drop = F]
                 y_mice = comp_mice[,(p+1):ncol(comp_mice),drop = F]
+                
+                print("MICE starts - lasso.logreg")
+                imp <- mice(cbind(X, Y_num), printFlag = FALSE, method = "lasso.logreg")
+                theta_mice2 = sapply(1:q, function(k){
+                  str = paste("Y", k, "~1", collapse = "", sep = "")
+                  summary(pool(with(imp, lm(formula(str)))))$estimate
+                })
+                
+                print("MICE starts - cart")
+                imp <- mice(cbind(X, Y_num), printFlag = FALSE, method = "cart")
+                theta_mice3 = sapply(1:q, function(k){
+                  str = paste("Y", k, "~1", collapse = "", sep = "")
+                  summary(pool(with(imp, lm(formula(str)))))$estimate
+                })
+                
+                print("MICE starts - lasso.select.logreg")
+                imp <- mice(cbind(X, Y_num), printFlag = FALSE, method = "lasso.select.logreg")
+                theta_mice4 = sapply(1:q, function(k){
+                  str = paste("Y", k, "~1", collapse = "", sep = "")
+                  summary(pool(with(imp, lm(formula(str)))))$estimate
+                })
                 
                 # missForest ####
                 print("missForest starts")
@@ -512,7 +535,10 @@ res = foreach(simnum = 1:SIMNUM,
                   
                   print(paste("theta_cc = ", theta_cc))
                   
-                  result = rbind(theta_full, theta_cc, theta_mice, theta_mF, theta_prop)
+                  result = rbind(FULL = theta_full, CC = theta_cc, 
+                                 MICE_pmm = theta_mice, MICE_cart = theta_mice3, 
+                                 MICE_lasso = theta_mice2, MICE_slasso = theta_mice4,
+                                 missForest = theta_mF, EFI = theta_prop)
                 }
                 
                 result

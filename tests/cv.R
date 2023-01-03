@@ -7,7 +7,9 @@ X_num = sapply(1:p, function(k) c(1:k_x) %*% (rmultinom(n, 1, p_x[,k]) == 1))
 colnames(X_num) <- paste("X", 1:p, sep = "")
 
 # p_Y_mat = apply(X_num[,1:q, drop = F], 2, function(k) p_Y[k])
-p_Y_mat = sapply(1:q, function(k) p_Y[X_num[,k, drop = F], k])
+# p_Y_mat = sapply(1:q, function(k) p_Y[X_num[,k, drop = F], k])
+p_Y_mat = sapply(1:q, function(k) (p_Y[X_num[,k, drop = F], k] + p_Y[X_num[,k+1, drop = F], k] + p_Y[X_num[,k+2, drop = F], k]) / 3)
+
 colnames(p_Y_mat) <- paste("Y", 1:q, sep = "")
 
 Y_num = apply(p_Y_mat, 2, function(k) rbinom(nrow(p_Y_mat), 1, k))
@@ -84,9 +86,9 @@ for (b in 1:B) {
   
   if(b == 1) select_x = 1:p_star
   else{
-    # select_x = sample(1:p, p_star, replace = F); if(b == 1) print("random variable selection")
+    select_x = sample(1:p, p_star, replace = F); if(b == 1) print("random variable selection")
     # cand_tmp = ncol(combn(min(c(p, 5)), p_star)); select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
-    cand_tmp = ncol(combn(p, p_star)); select_x = combn(p, p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
+    # cand_tmp = ncol(combn(p, p_star)); select_x = combn(p, p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
   }
   select_x_B = cbind(select_x_B, select_x)
 }
