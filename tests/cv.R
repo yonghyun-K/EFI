@@ -7,13 +7,13 @@ X_num = sapply(1:p, function(k) c(1:k_x) %*% (rmultinom(n, 1, p_x[,k]) == 1))
 colnames(X_num) <- paste("X", 1:p, sep = "")
 
 # p_Y_mat = apply(X_num[,1:q, drop = F], 2, function(k) p_Y[k])
-# p_Y_mat = sapply(1:q, function(k) p_Y[X_num[,k, drop = F], k])
-p_Y_mat = sapply(1:q, function(k) (p_Y[X_num[,k, drop = F], k] + p_Y[X_num[,k+1, drop = F], k] + p_Y[X_num[,k+2, drop = F], k]) / 3)
+p_Y_mat = sapply(1:q, function(k) p_Y[X_num[,k, drop = F], k])
+# p_Y_mat = sapply(1:q, function(k) (p_Y[X_num[,k, drop = F], k] + p_Y[X_num[,k+1, drop = F], k] + p_Y[X_num[,k+2, drop = F], k]) / 3)
 
 colnames(p_Y_mat) <- paste("Y", 1:q, sep = "")
 
 Y_num = apply(p_Y_mat, 2, function(k) rbinom(nrow(p_Y_mat), 1, k))
-print(cor(X_num, Y_num))
+
 # if(p > 20){
 #   print("Y_num[,1] = ifelse(rowsum(X_num[,1:10]) %% 2 == 0, 0, 1)
 #   Y_num[,2] = ifelse(apply(X_num[,seq(from = 11, to = 19, by = 2)] - X_num[,seq(from = 12, to = 20, by = 2)], 1, prod)
@@ -53,6 +53,8 @@ for(k in 1:q){
 # delta = structure(factor(delta_num), dim = dim(delta_num), class = c('matrix', 'factor'))
 colnames(delta) <- paste("delta", 1:q, sep = "")
 
+print(cor(X_num, cbind(Y_num, delta_num)))
+
 Y_ogn = Y
 
 theta_full = colMeans(Y_num)
@@ -86,9 +88,9 @@ for (b in 1:B) {
   
   if(b == 1) select_x = 1:p_star
   else{
-    select_x = sample(1:p, p_star, replace = F); if(b == 1) print("random variable selection")
+    # select_x = sample(1:p, p_star, replace = F); if(b == 1) print("random variable selection")
     # cand_tmp = ncol(combn(min(c(p, 5)), p_star)); select_x = combn(min(c(p, 5)), p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
-    # cand_tmp = ncol(combn(p, p_star)); select_x = combn(p, p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
+    cand_tmp = ncol(combn(p, p_star)); select_x = combn(p, p_star)[,(b+cand_tmp-1) %% cand_tmp + 1]; if(b == 1) print("nonrandom variable selection")
   }
   select_x_B = cbind(select_x_B, select_x)
 }
@@ -108,7 +110,7 @@ res_lambda = foreach(lambda = lambda_vec,
                 
                 # for (k_cv in 1:K){
                 for (k_cv in 1){
-                  if(lambda == 1 & k_cv == 1) sink(timenow, append=TRUE)
+                  if(lambda == lambda_vec[[2]] & k_cv == 1) sink(timenow, append=TRUE)
                   test_idx = which(cuts == k_cv)
                   train_idx = which(cuts != k_cv)
                   
@@ -164,15 +166,19 @@ res_lambda = foreach(lambda = lambda_vec,
                     z_b = cbind(x_num[bstp_idx,select_x], y_num[bstp_idx,, drop = F] + 1)
                     delta_b = delta_train[bstp_idx,, drop = F]
                     
-                    if(n <= n_B){
-                      x_oob = x_num[bstp_idx,select_x, drop = F]
-                      y_oob = y_num[bstp_idx,, drop = F]
-                      delta_obb = delta_train[bstp_idx,, drop = F]
-                    }else{
-                      x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x, drop = F]
-                      y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
-                      delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
-                    }
+                    x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x, drop = F]
+                    y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                    delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                    
+                    # if(n <= n_B){
+                    #   x_oob = x_num[bstp_idx,select_x, drop = F]
+                    #   y_oob = y_num[bstp_idx,, drop = F]
+                    #   delta_obb = delta_train[bstp_idx,, drop = F]
+                    # }else{
+                    #   x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x, drop = F]
+                    #   y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                    #   delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                    # }
 
                     # EM algorithm to compute \pi_{ijkl} ####
                     n_mat = table(data.frame(cbind(x_b, y_b)), useNA = "always")
@@ -416,7 +422,7 @@ res_lambda = foreach(lambda = lambda_vec,
                       }else{
                         lik_seg = 0
                       }
-                      # print(lik_seg)
+                      print(lik_seg)
                       lik_seg_all = lik_seg_all + lik_seg
                     }
                     
@@ -469,10 +475,15 @@ res_lambda = foreach(lambda = lambda_vec,
                 mean(res_K)
               }
 
+# print(res_lambda)
+
+res_lambda = lapply(res_lambda, function(k) ifelse(is.null(k), -Inf, k))
 res_lambda = unlist(res_lambda)
 lmabda_max = lambda_vec[which.max(res_lambda)]
 print(paste("lmabda_max =", lmabda_max))
 lambda = lmabda_max * 0.99
+
+print(paste("length(res_lambda) =", length(res_lambda)))
 
 if(length(lambda_vec) == length(res_lambda)){
   png(filename=paste(timenow0, ".png", sep = ""))

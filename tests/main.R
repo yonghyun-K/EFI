@@ -40,8 +40,8 @@ res = foreach(simnum = 1:SIMNUM,
                 colnames(X_num) <- paste("X", 1:p, sep = "")
                 
                 # p_Y_mat = apply(X_num[,1:q, drop = F], 2, function(k) p_Y[k])
-                # p_Y_mat = sapply(1:q, function(k) p_Y[X_num[,k, drop = F], k])
-                p_Y_mat = sapply(1:q, function(k) (p_Y[X_num[,k, drop = F], k] + p_Y[X_num[,k+1, drop = F], k] + p_Y[X_num[,k+2, drop = F], k]) / 3)
+                p_Y_mat = sapply(1:q, function(k) p_Y[X_num[,k, drop = F], k])
+                # p_Y_mat = sapply(1:q, function(k) (p_Y[X_num[,k, drop = F], k] + p_Y[X_num[,k+1, drop = F], k] + p_Y[X_num[,k+2, drop = F], k]) / 3)
                 
                 colnames(p_Y_mat) <- paste("Y", 1:q, sep = "")
                 
@@ -186,21 +186,25 @@ res = foreach(simnum = 1:SIMNUM,
                     p_01s_true[[k]] <- tmp
                   }
 
-                  bstp_idx = sample(1:length(train_idx), n_B, replace = F)
+                  bstp_idx = sample(1:length(train_idx), n_B, replace = T)
                   x_b = x[bstp_idx,select_x, drop = F]
                   y_b = y[bstp_idx,, drop = F]
                   z_b = cbind(x_num[bstp_idx,select_x], y_num[bstp_idx,, drop = F] + 1)
                   delta_b = delta_train[bstp_idx,, drop = F]
                   
-                  if(n <= n_B){
-                    x_oob = x_num[bstp_idx,select_x, drop = F]
-                    y_oob = y_num[bstp_idx,, drop = F]
-                    delta_obb = delta_train[bstp_idx,, drop = F]
-                  }else{
-                    x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x, drop = F]
-                    y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
-                    delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
-                  }
+                  x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x, drop = F]
+                  y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                  delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                  
+                  # if(n <= n_B){
+                  #   x_oob = x_num[bstp_idx,select_x, drop = F]
+                  #   y_oob = y_num[bstp_idx,, drop = F]
+                  #   delta_obb = delta_train[bstp_idx,, drop = F]
+                  # }else{
+                  #   x_oob = x_num[!(1:length(train_idx) %in% bstp_idx),select_x, drop = F]
+                  #   y_oob = y_num[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                  #   delta_obb = delta_train[!(1:length(train_idx) %in% bstp_idx),, drop = F]
+                  # }
                   
                   # EM algorithm to compute \pi_{ijkl} ####
                   n_mat = table(data.frame(cbind(x_b, y_b)), useNA = "always")

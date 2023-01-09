@@ -5,17 +5,17 @@ print(paste("n(Sample size) =", n))
 n_B = 200
 print(paste("n_B(Bootstrap sample size) =", n_B))
 
-p = 200
+p = 5
 print(paste("p =", p))
 
-p_star = 3
+p_star = 2
 print(paste("p_star =", p_star))
 
-q = 1
+q = 2
 print(paste("q =", q))
 
-# B = choose(p, p_star)
-B = 5
+B = choose(p, p_star)
+# B = 5
 print(paste("B(The number of bootstraps) =", B))
 
 SIMNUM = round(min(c(detectCores() / 3 * 2, 100)))
@@ -30,7 +30,7 @@ print(paste("k_x(Number of categories of X) =", k_x))
 maxit = 500
 print(paste("maxit =", maxit))
 
-lambda_vec_text = "seq(from = 1, to = 500, len = SIMNUM)"
+lambda_vec_text = "seq(from = 1e-10, to = 500, len = SIMNUM)"
 lambda_vec = eval(parse(text = lambda_vec_text))
 print(paste("lambda_vec_text =", lambda_vec_text))
 
@@ -56,7 +56,7 @@ print("p_x = "); print(p_x)
 # p_Y = sapply(1:q, function(x) runif(k_x, min = 0.25, max = 0.75))
 p_Y = sapply(1:q, function(x) {
   while(T){
-    tmp = runif(k_x, min = 0.1, max = 0.6) 
+    tmp = runif(k_x, min = 0.2, max = 0.8) 
     if(max(tmp) - min(tmp) > 0.4) break
   }
   return(tmp)
@@ -66,8 +66,8 @@ print("p_Y = "); print(p_Y)
 
 # theta = sum(p_x * p_Y[1:k_x])
 # print(paste("theta =", round(theta, 5)))
-# theta = colSums(p_x[,1:q] * p_Y)
-theta = colSums(rowMeans(p_x[,1:3]) * p_Y)
+theta = colSums(p_x[,1:q] * p_Y)
+# theta = colSums(rowMeans(p_x[,1:3]) * p_Y)
 print("theta = "); print(theta)
 
 # misstype = "NMAR"
@@ -83,8 +83,8 @@ print(paste("misstype =", misstype))
 # p_delta_ftn = function(k) 1 / (1 + exp(-(X_num[,k] + X_num[,k+1] - X_num[,k+2]))); print("MAR") # 0.8
 # p_delta_ftn = function(k) 1 / (1 + exp(-(-1 + X_num[,k] + X_num[,k+1] - X_num[,k+2]))); print("MAR") # 0.61
 # p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 2 + X_num[,k + 3] / 4 + X_num[,k + 4] / 4))); print("MAR") # 0.415
-p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 2 + X_num[,k + 2] / 2))); print("MAR") # 0.415
-# p_delta_ftn = function(k) 1 / (1 + exp(-(X_num[,k] / 2 - 1 / 4))); print("MAR") # 0.415
+# p_delta_ftn = function(k) 1 / (1 + exp(-(-X_num[,k] / 2 + X_num[,k + 2] / 2))); print("MAR") # 0.415
+p_delta_ftn = function(k) 1 / (1 + exp(-(X_num[,k] * 2 - 3))); print("MAR") # 0.415
 # p_delta_ftn = function(k) 1 / (1 + exp(-(X_num[,k+1] / 2 - 1 / 4))); print("MAR") # 0.415
 
 # p_delta_ftn = function(k) 1 / (1 + exp(-(1 - X_num[,k] / 4 + 1 / 4 - Y_num[,k] / 4))); print("NMAR") # 0.415
