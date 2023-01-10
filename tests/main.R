@@ -18,7 +18,7 @@ writeLines(c(""), timenow)
 sink(timenow, append=TRUE)
 
 fin_list = NULL
-lognvec = seq(7, 8, len = 5)
+lognvec = seq(4, 10, len = 7)
 for(logn in lognvec){
 source("par.R")
 n = n_B = round(exp(logn))  
