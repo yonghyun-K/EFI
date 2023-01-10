@@ -78,7 +78,7 @@ comp_mice = complete(imp,1:5)
 X_mice = comp_mice[,1:p,drop = F]
 y_mice = comp_mice[,(p+1):ncol(comp_mice),drop = F]
 
-K = 10
+K = 5
 
 bstp_idx_B = NULL
 select_x_B = NULL
@@ -108,9 +108,10 @@ res_lambda = foreach(lambda = lambda_vec,
                 
                 res_K = NULL
                 
-                # for (k_cv in 1:K){
                 for (k_cv in 1){
+                # for (k_cv in 1:K){
                   if(lambda == lambda_vec[[2]] & k_cv == 1) sink(timenow, append=TRUE)
+                  print(paste("k_cv =", k_cv))
                   test_idx = which(cuts == k_cv)
                   train_idx = which(cuts != k_cv)
                   
@@ -402,7 +403,8 @@ res_lambda = foreach(lambda = lambda_vec,
                       z_oob_sub = z_oob[apply(delta_obb, 1, function(id) all(id == ydex)),,drop = F]
                       if(nrow(z_oob_sub) != 0){
                         lik_seg = sum(apply(z_oob_sub, 1, function(rows){
-                          if(k != 1) cands = expand.grid(sapply(rows, tmpftn))
+                          if(k != 1) cands = expand.grid(lapply(rows, tmpftn))
+                          # cands = expand.grid(sapply(rows, tmpftn))
                           else cands = t(rows)
                           # print(cands)
                           log(sum(apply(cands, 1, function(k2) {
@@ -422,7 +424,7 @@ res_lambda = foreach(lambda = lambda_vec,
                       }else{
                         lik_seg = 0
                       }
-                      print(lik_seg)
+                      # print(lik_seg)
                       lik_seg_all = lik_seg_all + lik_seg
                     }
                     
@@ -453,7 +455,7 @@ res_lambda = foreach(lambda = lambda_vec,
                     y_test_sub = y_test[apply(delta_test, 1, function(id) all(id == ydex)),,drop = F] + 1
                     if(nrow(y_test_sub) != 0){
                       lik_seg = sum(apply(y_test_sub, 1, function(rows){
-                        if(k != 1) cands = expand.grid(sapply(rows, tmpftn))
+                        if(k != 1) cands = expand.grid(lapply(rows, tmpftn))
                         else cands = t(rows)
                         # print(cands)
                         log(sum(apply(cands, 1, function(k2) {
@@ -485,7 +487,7 @@ lambda = lmabda_max * 0.99
 
 print(paste("length(res_lambda) =", length(res_lambda)))
 
-if(length(lambda_vec) == length(res_lambda)){
+if(length(lambda_vec) == length(res_lambda & !all(is.infinite(res_lambda)))){
   png(filename=paste(timenow0, ".png", sep = ""))
   plot(lambda_vec, res_lambda)
   dev.off()
