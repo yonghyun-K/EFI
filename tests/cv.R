@@ -108,8 +108,8 @@ res_lambda = foreach(lambda = lambda_vec,
                 
                 res_K = NULL
                 
-                for (k_cv in 1){
-                # for (k_cv in 1:K){
+                # for (k_cv in 1){
+                for (k_cv in 1:K){
                   if(lambda == lambda_vec[[2]] & k_cv == 1) sink(timenow, append=TRUE)
                   print(paste("k_cv =", k_cv))
                   test_idx = which(cuts == k_cv)
@@ -123,11 +123,13 @@ res_lambda = foreach(lambda = lambda_vec,
                   x_num = X_num[train_idx,,drop = F]
                   y_num = Y_num[train_idx,, drop = F]
                   
+                  x_test = X_num[test_idx,, drop = F]
                   y_test = Y_num[test_idx,, drop = F]
                   delta_test = delta[test_idx,, drop = F]
                   
                   p_mat_lambda = array(0, dim = rep(2,q))
                   w_B = NULL
+                  lik_seg_res = numeric(nrow(y_test))
                   for(b in 1:B){
                     print(paste("b =", b))
                     select_x = select_x_B[,b]
@@ -430,15 +432,46 @@ res_lambda = foreach(lambda = lambda_vec,
                     
                     l_obs = sum(lik_seg_all) / nrow(z_oob) # observed likelihood
                     if(is.nan(l_obs)) next() 
-                    
-                    expl_obs = exp(lambda * l_obs)
-                    w_B = c(w_B, expl_obs)                  
+
+                    expl_obs = ifelse(l_obs == -Inf, 0, exp(lambda * l_obs))
+                    w_B = c(w_B, expl_obs) 
                     print(paste("select_x =", paste(select_x))); print(paste("expl_obs =", expl_obs))
                     # print(logLik(glm(y_oob ~ x_oob, family = binomial())))
                     # print(logLik(glm(delta_obb[,1] ~ x_oob, family = binomial())))
                     
                     p_mat_lambda = p_mat_lambda + expl_obs * apply(p_mat0, c((p_star+ 1):(p_star + q)), sum)
                     
+                    z_test = cbind(x_test[,select_x], y_test + 1)
+                    lik_seg_vec = c()
+                    for(k in 1:nrow(delind)){
+                      ydex = delind[k,,drop = F]
+                      z_test_sub = z_test[apply(delta_test, 1, function(id) all(id == ydex)),,drop = F]
+                      if(nrow(z_test_sub) != 0){
+                        lik_seg = apply(z_test_sub, 1, function(rows){
+                          if(k != 1) cands = expand.grid(lapply(rows, tmpftn))
+                          # cands = expand.grid(sapply(rows, tmpftn))
+                          else cands = t(rows)
+                          # print(cands)
+                          sum(apply(cands, 1, function(k2) {
+                            p_mat[t(k2)]
+                            # * prod(sapply(1:q, function(l){
+                            #   if(misstype == "NMAR") texts = paste(k2[c(1:p_star, p_star + l)], collapse = ",")
+                            #   else if(misstype == "MAR") texts = paste(k2[c(1:p_star)], collapse = ",")
+                            #   else if(misstype == "SCens") texts = paste(k2[c(p_star + l)], collapse = ",")
+                            #   
+                            #   texts = paste("Pdel_xy[[ydex[,", l, "] + 1]][[", l, "]][", texts, "]")
+                            #   # print(texts)
+                            #   # print(eval(parse(text = texts)))
+                            #   eval(parse(text = texts))
+                            # }  ))
+                          }))
+                        })
+                        lik_seg_vec= c(lik_seg_vec, lik_seg)
+                      }
+                      # print(lik_seg)
+                      }
+                    
+                    lik_seg_res = lik_seg_res + expl_obs * lik_seg_vec
                   }
                   
                   if(sum(w_B) == 0){
@@ -446,32 +479,35 @@ res_lambda = foreach(lambda = lambda_vec,
                     return(NULL)
                   }
                   
-                  p_mat_lambda = p_mat_lambda / sum(w_B)
-                  # print(p_mat_lambda)
-                  lik_seg_all = 0
+                  # p_mat_lambda = p_mat_lambda / sum(w_B)
+                  # # print(p_mat_lambda)
+                  # lik_seg_all = 0
+                  # for(k in 1:nrow(delind)){
+                  #   ydex = delind[k,,drop = F]
+                  #   y_test_sub = y_test[apply(delta_test, 1, function(id) all(id == ydex)),,drop = F] + 1
+                  #   if(nrow(y_test_sub) != 0){
+                  #     lik_seg = sum(apply(y_test_sub, 1, function(rows){
+                  #       if(k != 1) cands = expand.grid(lapply(rows, tmpftn))
+                  #       else cands = t(rows)
+                  #       # print(cands)
+                  #       log(sum(apply(cands, 1, function(k2) {
+                  #         p_mat_lambda[t(k2)]
+                  #       })))
+                  #     }))
+                  #     
+                  #   }else{
+                  #     lik_seg = 0
+                  #   }
+                  #   # print(lik_seg)
+                  #   lik_seg_all = lik_seg_all + lik_seg
+                  # }
+                  # print(paste("lik(lambda) =", lik_seg_all))
+                  # res_K = c(res_K, lik_seg_all)
                   
-                  for(k in 1:nrow(delind)){
-                    ydex = delind[k,,drop = F]
-                    y_test_sub = y_test[apply(delta_test, 1, function(id) all(id == ydex)),,drop = F] + 1
-                    if(nrow(y_test_sub) != 0){
-                      lik_seg = sum(apply(y_test_sub, 1, function(rows){
-                        if(k != 1) cands = expand.grid(lapply(rows, tmpftn))
-                        else cands = t(rows)
-                        # print(cands)
-                        log(sum(apply(cands, 1, function(k2) {
-                          p_mat_lambda[t(k2)]
-                        })))
-                      }))
-                      
-                    }else{
-                      lik_seg = 0
-                    }
-                    # print(lik_seg)
-                    lik_seg_all = lik_seg_all + lik_seg
-                  }
-                  print(paste("lik(lambda) =", lik_seg_all))
                   
-                  res_K = c(res_K, lik_seg_all)
+                  lik_seg_res = lik_seg_res / sum(w_B)
+                  print(paste("sum(log(lik_seg_res))", sum(log(lik_seg_res))))
+                  res_K = c(res_K, sum(log(lik_seg_res)))
                 }
                 
                 mean(res_K)

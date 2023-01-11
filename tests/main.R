@@ -18,7 +18,7 @@ writeLines(c(""), timenow)
 sink(timenow, append=TRUE)
 
 fin_list = NULL
-lognvec = seq(5, 10, len = 7)
+lognvec = seq(4.5, 10, len = 10)
 # lognvec = seq(7, 8, len = 7)
 for(logn in lognvec){
 source("par.R")
@@ -456,7 +456,7 @@ res = foreach(simnum = 1:SIMNUM,
                   l_obs = sum(lik_seg_all) / nrow(z_oob) # observed likelihood
                   if(is.nan(l_obs)) result = NA
                   
-                  expl_obs = exp(lambda * l_obs)
+                  expl_obs = ifelse(l_obs == -Inf, 0, exp(lambda * l_obs))
                   print(paste("lambda =", lambda))
                   print(paste("select_x =", paste(select_x))); print(paste("expl_obs =", expl_obs))
                   

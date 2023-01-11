@@ -1,8 +1,8 @@
 # Simulation  setup ####
-n = 2000
+n = 100
 print(paste("n(Sample size) =", n))
 
-n_B = 2000
+n_B = n
 print(paste("n_B(Bootstrap sample size) =", n_B))
 
 p = 5
@@ -18,8 +18,8 @@ B = choose(p, p_star)
 # B = 5
 print(paste("B(The number of bootstraps) =", B))
 
-# SIMNUM = round(min(c(detectCores() / 3 * 2, 100)))
-SIMNUM = 10
+SIMNUM = round(min(c(detectCores() / 3 * 2, 100)))
+# SIMNUM = 10
 print(paste("SIMNUM(MC size) =", SIMNUM))
 
 k_x = 2
@@ -31,7 +31,7 @@ print(paste("k_x(Number of categories of X) =", k_x))
 maxit = 500
 print(paste("maxit =", maxit))
 
-lambda_vec_text = "seq(from = 2, to = 500, len = SIMNUM)"
+lambda_vec_text = "seq(from = 0, to = 300, len = SIMNUM)"
 lambda_vec = eval(parse(text = lambda_vec_text))
 print(paste("lambda_vec_text =", lambda_vec_text))
 
