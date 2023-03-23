@@ -12,6 +12,6 @@ importFrom(dplyr,select)
 importFrom(dplyr,summarize)
 
 import(CVXR)
-import(plyr)
+importFrom(plyr, alply)
 import(cat)
 import(igraph)
