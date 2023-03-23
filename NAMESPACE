@@ -2,6 +2,7 @@ exportPattern("^[[:alpha:]]+")
 export(doublep)
 export(efi)
 export(estimate)
+export(plot.doublep)
 
 importFrom(dplyr,"%>%")
 importFrom(dplyr,filter)
