@@ -137,6 +137,7 @@ estimate = function(data, expr){
 plot.doublep = function(dp){
   weightmat = dp$weightmat
   g <- graph_from_adjacency_matrix(weightmat, mode = "lower", weighted = "weight")
-  plot(g, edge.width = E(g)$weight, edge.label = E(g)$weight, label = coords)
+  # plot(g, edge.width = E(g)$weight, edge.label = E(g)$weight, label = coords)
+  plot(g, edge.width = E(g)$weight, edge.label = E(g)$weight)
 }
 
