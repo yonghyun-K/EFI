@@ -19,16 +19,16 @@ estimate(EFI, "(V1 == 1) & (V2 == 2)")
 
 
 # data(crimes, package = "cat")
-# 
+#
 # p = 2
 # Y = do.call("rbind", apply(crimes, 1, function(x) matrix(rep(x[1:p], each = x[p+1]), nc = p)))
 # Y = as.data.frame(Y)
 # for(k in 1:p){
 #   Y[[k]] = factor(Y[[k]])
 # }
-# 
+#
 # (n = nrow(Y)); sum(crimes[,p+1])
-# 
+#
 # cand.edges = as.list(data.frame(combn(p, 2)))
 # dp = doublep(Y, cand.edges)
 # EFI = efi(Y, dp)
