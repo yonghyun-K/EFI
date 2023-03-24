@@ -1,7 +1,6 @@
 library(dplyr)
-library(cat)
 
-data(older)
+data(older, package = "cat")
 p = 6
 Y = do.call("rbind", apply(older, 1, function(x) matrix(rep(x[1:p], each = x[p+1]), nc = p)))
 Y = as.data.frame(Y)
@@ -19,7 +18,7 @@ estimate(EFI, "(V1 == 1) & (V2 == 2)")
 # with(imp, summary(glm((Var1 == 1) & (Var2 == 2) ~ 1, family = binomial(link = "identity"), weights = w)))
 
 
-# data(crimes)
+# data(crimes, package = "cat")
 # 
 # p = 2
 # Y = do.call("rbind", apply(crimes, 1, function(x) matrix(rep(x[1:p], each = x[p+1]), nc = p)))
@@ -35,7 +34,7 @@ estimate(EFI, "(V1 == 1) & (V2 == 2)")
 # EFI = efi(Y, dp)
 # estimate(EFI, "(V1 == 1) & (V2 == 2)")
 
-data(belt)
+data(belt, package = "cat")
 belt
 p = 6
 Y = do.call("rbind", apply(belt, 1, function(x) matrix(rep(x[1:p], each = x[p+1]), nc = p)))
@@ -54,7 +53,7 @@ EFI = efi(Y, dp)
 estimate(EFI, "(V1 == 1) & (V2 == 2)")
 
 
-data(HairEyeColor)
+data(HairEyeColor, package = "cat")
 
 p = 3
 Y = do.call("rbind", apply(as.data.frame.table(HairEyeColor), 1, function(x) matrix(rep(x[1:p], each = x[p+1]), nc = p)))
