@@ -13,6 +13,7 @@ for(k in 1:p){
 
 cand.edges = as.list(data.frame(combn(p, 2)))
 dp = doublep(Y, cand.edges)
+plot(dp)
 EFI = efi(Y, dp)
 estimate(EFI, "(V1 == 1) & (V2 == 2)")
 # with(imp, summary(glm((Var1 == 1) & (Var2 == 2) ~ 1, family = binomial(link = "identity"), weights = w)))
@@ -60,7 +61,7 @@ Y = do.call("rbind", apply(as.data.frame.table(HairEyeColor), 1, function(x) mat
 Y = as.data.frame(Y)
 for(k in 1:p){
   Y[[k]] = factor(Y[[k]])
-  levels(Y[[k]]) <- as.character(1:nlevels(Y[[k]]))
+  # levels(Y[[k]]) <- as.character(1:nlevels(Y[[k]]))
 }
 (n = nrow(Y)); sum(HairEyeColor)
 delta = matrix(rbinom(n * p, 1, 0.9), nr = n, nc = p)

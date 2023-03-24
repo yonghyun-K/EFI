@@ -8,16 +8,20 @@
 # library(dplyr)
 
 doublep = function(Y, cand.edges){
-  supp = lapply(Y, . %>% levels %>% as.numeric)
+  # supp = lapply(Y, . %>% levels %>% as.numeric)
+  supp = lapply(Y, . %>% levels)
   grid_tmp = expand.grid(supp)
   p = length(supp)
+  supplen = sapply(supp, length)
   marginalProb = alply(Y, 2, function(x) c(table(x) / sum(table(x))))
+  namesY = names(Y)
 
   mat = sapply(cand.edges, function(x){
-
-    tmpdata = sapply(as.data.frame(table(Y[,x], useNA = "always")), as.numeric)
-    s <- prelim.cat(tmpdata[,1:(ncol(tmpdata) - 1)], tmpdata[,ncol(tmpdata)]) # preliminary manipulations
-    thetahat <- em.cat(s, showits=F)
+    # tmpdata = sapply(as.data.frame(table(Y[,x], useNA = "always")), as.numeric)
+    # s <- prelim.cat(tmpdata[,1:(ncol(tmpdata) - 1)], tmpdata[,ncol(tmpdata)]) # preliminary manipulations
+    # thetahat <- em.cat(s, showits=F)
+    thetahat <- array(get.fitted(cvam(formula(paste("~", paste(namesY[x], collapse = "*"))), data = Y))$fit, dim = supplen[x])
+    dimnames(thetahat) <- supp[x]
 
     list_tmp = append(list(thetahat), marginalProb[-x])
 
@@ -80,7 +84,7 @@ efi = function(Y, dp){
         y_tmp[mis_idx] <- mis_val; y_tmp[obs_idx0] <- obs_val0;
 
         sel_cand = sapply(cand.edges, function(x) all(x %in% c(mis_idx, obs_idx)))
-        condP = colSums(mat[apply(t(grid_tmp[,c(mis_idx, obs_idx)]) == c(mis_val, obs_val), 2, all), sel_cand ,drop = F]) / colSums(mat[apply(t(grid_tmp[,obs_idx]) == obs_val, 2, all), sel_cand, drop = F]) # P(Y2 = 1, Y4 = 2 | Y1 = 1, Y2 = 2, Y3 = 2)
+        condP = colSums(mat[apply(t(grid_tmp[,c(mis_idx, obs_idx),drop = F]) == c(mis_val, obs_val), 2, all), sel_cand ,drop = F]) / colSums(mat[apply(t(grid_tmp[,obs_idx,drop = F]) == obs_val, 2, all), sel_cand, drop = F]) # P(Y2 = 1, Y4 = 2 | Y1 = 1, Y2 = 2, Y3 = 2)
 
         # print(paste("P(", paste(paste("Y", mis_idx, sep = "") , mis_val, sep = "=", collapse = ", "), "|", paste(paste("Y", obs_idx, sep = "") , obs_val, sep = "=", collapse = ", "), ")"));
         sumtmp = sum(weightvec[sel_cand])
