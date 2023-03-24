@@ -7,6 +7,11 @@ using model weights.
 
 ## Installation
 
+library(devtools)
+install_github("yonghyun-K/EFI", dependencies = T)
+
+library(EFI)
+
 ## Example commands
 
 ## Externel Links
