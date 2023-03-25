@@ -2,7 +2,7 @@ library(devtools)
 install_github("yonghyun-K/EFI", dependencies = T, force = T)
 
 library(EFI)
-install.packages("cli", repos = NULL, type="source")
+
 library(dplyr)
 
 data(older, package = "cat")
@@ -76,4 +76,5 @@ cand.edges = as.list(data.frame(combn(p, 2)))
 dp = doublep(Y, cand.edges)
 plot(dp)
 EFI = efi(Y, dp)
-estimate(EFI, "(V1 == 1) & (V2 == 2)")
+estimate(EFI, "(V1 == \"Brown\") & (V2 == \"Black\")")
+
