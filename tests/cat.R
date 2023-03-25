@@ -1,3 +1,8 @@
+library(devtools)
+install_github("yonghyun-K/EFI", dependencies = T, force = T)
+
+library(EFI)
+install.packages("cli", repos = NULL, type="source")
 library(dplyr)
 
 data(older, package = "cat")
