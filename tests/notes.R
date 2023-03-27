@@ -18,19 +18,19 @@ array(get.fitted(cvam(formula(paste("~", paste(names(Y)[x], collapse = "*"))), d
 
 
 
-install.packages("imputeMulti")
+# install.packages("imputeMulti")
 library(imputeMulti)
 
 
 
 data(tract2221)
-
-
-
+Y = as.data.frame.table(table(tract2221, useNA = "ifany"))
+nrow(Y[!(Y$Freq == 0),])
+nrow(tract2221)
 
 summary(tract2221)
 
-install.packages("HardyWeinberg")
+
 library(HardyWeinberg)
 data(Markers)
 

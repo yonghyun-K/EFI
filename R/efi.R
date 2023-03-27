@@ -6,6 +6,7 @@
 # library(igraph)
 # library(plyr)
 # library(dplyr)
+# library(cvam)
 
 doublep = function(Y, cand.edges, freq = F){
   if(!freq) Y = cbind(Y, 1)
@@ -13,9 +14,11 @@ doublep = function(Y, cand.edges, freq = F){
   colnames(Y)[ncol(Y)] = "Freq"
   supp = lapply(Y[-ncol(Y)], . %>% levels)
   grid_tmp = expand.grid(supp)
+  n = sum(Y$Freq)
   p = length(supp)
   supplen = sapply(supp, length)
-  marginalProb =lapply(Y[-ncol(Y)], function(x) xtabs(Freq ~ x, Y) / n)
+
+  marginalProb =lapply(Y[-ncol(Y)], function(x) xtabs(Freq ~ x, Y, addNA = F) / sum(xtabs(Freq ~ x, Y, addNA = F)))
   namesY = names(Y[-ncol(Y)])
 
   mat = sapply(cand.edges, function(x){
@@ -48,7 +51,7 @@ doublep = function(Y, cand.edges, freq = F){
   weightmat[t(sapply(cand.edges, cbind))] <- weightvec # This should be corrected
   weightmat[lower.tri(weightmat)] <- t(weightmat)[lower.tri(weightmat)]
   dp <- list(weightvec = weightvec, weightmat = weightmat, mat = mat,
-             cand.edges = cand.edges, supp = supp, grid_tmp = grid_tmp, p = p)
+             cand.edges = cand.edges, supp = supp, grid_tmp = grid_tmp, n = n, p = p)
   class(dp) <- "doublep"
   return(dp)
 }
@@ -61,6 +64,7 @@ efi = function(Y, dp, freq = F){
   cand.edges = dp$cand.edges
   supp = dp$supp
   grid_tmp = dp$grid_tmp
+  n = dp$n
   p = dp$p
 
   if(!freq) Y = cbind(Y, 1)
@@ -130,7 +134,7 @@ efi = function(Y, dp, freq = F){
   # names(Y_FI0)[1:p] <- names(Y)
 
   edges = cand.edges[weightvec != 0]
-  EFI = list(imp = Y_FI0, edges = edges, weightmat = weightmat, n = nrow(Y))
+  EFI = list(imp = Y_FI0, edges = edges, weightmat = weightmat, n = n)
 
   class(EFI) <- "efi"
   return(EFI)
@@ -146,7 +150,7 @@ estimate = function(data, expr){
   # print(model.summ$terms)
   Estimate = model.summ$coefficients[1]
   U = model.summ$coefficients[2]^2
-  B = eval(parse(text = paste("sum(imp %>% group_by(id) %>% dplyr::summarise(sum(w[", expr, "]), sum(w)) %>% {.[[2]] * (.[[3]] - .[[2]])}) / n^2")), envir = imp)
+  B = eval(parse(text = paste("sum(imp %>% group_by(id) %>% dplyr::summarise(sum(w[", expr, "]), sum(w)) %>% {ifelse(.[[3]] == 0, 0, .[[2]] * (.[[3]] - .[[2]]) / .[[3]])}) / n^2")), envir = imp)
 
   Std.Error = sqrt(U + B)
   return(list(call = call, expr = expr, Estimate = Estimate, Std.Error = Std.Error, sqrtU = sqrt(U), sqrtB = sqrt(B)))
