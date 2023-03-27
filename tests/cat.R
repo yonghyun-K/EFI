@@ -73,8 +73,9 @@ delta = matrix(rbinom(n * p, 1, 0.9), nr = n, nc = p)
 Y[delta == 0] = NA
 
 cand.edges = as.list(data.frame(combn(p, 2)))
-dp = doublep(Y, cand.edges)
+dp = doublep(Y, cand.edges, freq = T)
 plot(dp)
-EFI = efi(Y, dp)
-estimate(EFI, "(V1 == \"Brown\") & (V2 == \"Black\")")
-
+EFI = efi(Y, dp, freq = T)
+# data = EFI
+estimate(EFI, "(V1 == \"Black\") & (V2 == \"Brown\")")
+estimate(EFI, "(V1 == \"Black\") & (V3 == \"Male\")")
