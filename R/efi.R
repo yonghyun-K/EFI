@@ -13,28 +13,36 @@ doublep = function(Y, cand.edges, freq = F){
 
   colnames(Y)[ncol(Y)] = "Freq"
   supp = lapply(Y[-ncol(Y)], . %>% levels)
-  grid_tmp = expand.grid(supp)
   n = sum(Y$Freq)
   p = length(supp)
   supplen = sapply(supp, length)
-
-  marginalProb =lapply(Y[-ncol(Y)], function(x) xtabs(Freq ~ x, Y, addNA = F) / sum(xtabs(Freq ~ x, Y, addNA = F)))
   namesY = names(Y[-ncol(Y)])
 
-  mat = sapply(cand.edges, function(x){
-    thetahat <- array(get.fitted(cvam(formula(paste("~", paste(namesY[x], collapse = "*"))), data = Y, freq = Freq))$fit, dim = supplen[x])
-    dimnames(thetahat) <- supp[x]
+  # grid_tmp = expand.grid(supp)
+  # marginalProb =lapply(Y[-ncol(Y)], function(x) xtabs(Freq ~ x, Y, addNA = F) / sum(xtabs(Freq ~ x, Y, addNA = F)))
+  # mat = sapply(cand.edges, function(x){
+  #   thetahat <- array(get.fitted(cvam(formula(paste("~", paste(namesY[x], collapse = "*"))), data = Y, freq = Freq))$fit, dim = supplen[x])
+  #   dimnames(thetahat) <- supp[x]
+  #
+  #   list_tmp = append(list(thetahat), marginalProb[-x])
+  #
+  #   apply(grid_tmp, 1, function(y)
+  #     prod(c(list_tmp[[1]][t(y[x])], mapply(function(z, y) z[y], list_tmp[2:(p-1)], y[-(x)]))))
+  # })
+  # tmpmat = apply(Y[-ncol(Y)], 1, function(y){
+  #   colSums(mat[apply(grid_tmp, 1, function(x) all(x[which(!is.na(y))] == y[which(!is.na(y))] )), ,drop = F])
+  # })
+  # tmpmat = t(tmpmat)
 
-    list_tmp = append(list(thetahat), marginalProb[-x])
+  marginalProb = lapply(Y[-ncol(Y)], function(x) get.fitted( cvam(~ x, data = Y, freq = Freq), mfTrue  = F))
 
-    apply(grid_tmp, 1, function(y)
-      prod(c(list_tmp[[1]][t(y[x])], mapply(function(z, y) z[y], list_tmp[2:(p-1)], y[-(x)]))))
+  marginalProbmat =sapply(Y[-ncol(Y)], function(x) cvamLik(~ x, cvam(~ x, data = Y, freq = Freq), data = Y)$likVal)
+  marginalProbmat = as.data.frame(marginalProbmat)
+
+  tmpmat = sapply(cand.edges, function(x){
+    apply(select(marginalProbmat, -x), 1, prod) *
+      cvamLik(formula(paste("~", paste(namesY[x], collapse = "+"))), cvam(formula(paste("~", paste(namesY[x], collapse = "*"))), data = Y, freq = Freq), data = Y)$likVal
   })
-
-  tmpmat = apply(Y[-ncol(Y)], 1, function(y){
-    colSums(mat[apply(grid_tmp, 1, function(x) all(x[which(!is.na(y))] == y[which(!is.na(y))] )), ,drop = F])
-  })
-  tmpmat = t(tmpmat)
 
   w = Variable(length(cand.edges))
   constraints <- list(sum(w) == 1, w >= 0)
@@ -50,8 +58,8 @@ doublep = function(Y, cand.edges, freq = F){
   weightmat = matrix(0, nr = p, nc = p)
   weightmat[t(sapply(cand.edges, cbind))] <- weightvec # This should be corrected
   weightmat[lower.tri(weightmat)] <- t(weightmat)[lower.tri(weightmat)]
-  dp <- list(weightvec = weightvec, weightmat = weightmat, mat = mat,
-             cand.edges = cand.edges, supp = supp, grid_tmp = grid_tmp, n = n, p = p)
+  dp <- list(weightvec = weightvec, weightmat = weightmat, #mat = mat, grid_tmp = grid_tmp,
+             cand.edges = cand.edges, supp = supp, n = n, p = p, marginalProb = marginalProb)
   class(dp) <- "doublep"
   return(dp)
 }
@@ -60,12 +68,14 @@ efi = function(Y, dp, freq = F){
   if(class(dp) != "doublep") stop("dp must have class doublep")
   weightvec = dp$weightvec
   weightmat = dp$weightmat
-  mat = dp$mat
   cand.edges = dp$cand.edges
   supp = dp$supp
-  grid_tmp = dp$grid_tmp
   n = dp$n
   p = dp$p
+  marginalProb = dp$marginalProb
+
+  # mat = dp$mat
+  # grid_tmp = dp$grid_tmp
 
   if(!freq) Y = cbind(Y, 1)
 
@@ -93,6 +103,7 @@ efi = function(Y, dp, freq = F){
         y_tmp = y
         y_tmp[mis_idx] <- mis_val; y_tmp[obs_idx0] <- obs_val0;
         # print(y_tmp)
+
 
         sel_cand = sapply(cand.edges, function(x) all(x %in% c(mis_idx, obs_idx)))
 

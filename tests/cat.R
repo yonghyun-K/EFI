@@ -20,6 +20,8 @@ data(older, package = "cat")
 # EFI = efi(Y, dp)
 # estimate(EFI, "(V1 == 1) & (V2 == 2)")
 
+p = 6
+cand.edges = as.list(data.frame(combn(p, 2)))
 Y = data.frame(older, stringsAsFactors= T)
 for(k in 1:(ncol(Y) - 1)){
   Y[[k]] = factor(Y[[k]])
