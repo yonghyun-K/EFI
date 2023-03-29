@@ -31,8 +31,6 @@ array(get.fitted(cvam(formula(paste("~", paste(names(Y)[x], collapse = "*"))), d
 # install.packages("imputeMulti")
 library(imputeMulti)
 
-
-
 data(tract2221, package = "imputeMulti")
 Y = tract2221
 p = ncol(tract2221)
@@ -45,6 +43,34 @@ lapply(tract2221, levels)
 summary(tract2221)
 estimate(EFI, "(marital_status == \"never_mar\") & (edu_attain == \"lt_hs\")")
 # Y = cbind(tract2221, 1)
+
+# install.packages("missMDA")
+
+library(missMDA)
+
+data(vnf, package = "missMDA")
+p = ncol(vnf)
+cand.edges = as.list(data.frame(combn(p, 2)))
+dp = doublep(vnf, cand.edges)
+plot(dp)
+EFI = efi(vnf, dp)
+names(vnf)
+lapply(vnf, levels)
+summary(vnf)
+estimate(EFI, "(Q7.1 == 1) & (Q40.3 == 2)")
+
+data(TitanicNA, package = "missMDA")
+p = ncol(TitanicNA)
+cand.edges = as.list(data.frame(combn(p, 2)))
+dp = doublep(TitanicNA, cand.edges)
+plot(dp)
+EFI = efi(TitanicNA, dp)
+names(TitanicNA)
+lapply(TitanicNA, levels)
+estimate(EFI, "(CLASS == 1) & (SEX == 0)")
+summary(TitanicNA)
+
+
 
 Y = as.data.frame.table(table(tract2221, useNA = "ifany"))
 
@@ -61,6 +87,8 @@ summary(tract2221)
 library(HardyWeinberg)
 data(Markers)
 
+
+510 + 510
 
 install.packages("cvam")
 library(cvam)
