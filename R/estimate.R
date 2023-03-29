@@ -1,4 +1,4 @@
-#' Add together two numbers
+#' Estimate the joint probabilities
 #'
 #' @param efi.obj An object produced by \code{efi}.
 #' @param expr A string that contains formulas with the desired probabilities.
@@ -12,15 +12,15 @@
 #' Y[[k]] = factor(Y[[k]])
 #' }
 #' names(Y) <- names(dimnames(HairEyeColor))
-#' # (n = nrow(Y)); sum(HairEyeColor)
+#' (n = nrow(Y)); sum(HairEyeColor)
 #' delta = matrix(rbinom(n * p, 1, 0.5), nr = n, nc = p)
 #' Y[delta == 0] = NA
 #'
 #' cand.edges = as.list(data.frame(combn(p, 2)))
 #' dp = doublep(Y, cand.edges, freq = F)
 #' EFI = efi(Y, dp, freq = F)
-#' estimate(EFI, "(V1 == \"Black\") & (V2 == \"Brown\")")
-#' estimate(EFI, "(V1 == \"Black\") & (V3 == \"Male\")")
+#' estimate(EFI, "(Hair == \"Black\") & (Eye == \"Brown\")")
+#' estimate(EFI, "(Hair == \"Black\") & (Sex == \"Male\")")
 #' @export
 
 estimate = function(efi.obj, expr){

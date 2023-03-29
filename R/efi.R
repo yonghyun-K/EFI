@@ -20,7 +20,7 @@
 #' Y[[k]] = factor(Y[[k]])
 #' }
 #' names(Y) <- names(dimnames(HairEyeColor))
-#' # (n = nrow(Y)); sum(HairEyeColor)
+#' (n = nrow(Y)); sum(HairEyeColor)
 #' delta = matrix(rbinom(n * p, 1, 0.5), nr = n, nc = p)
 #' Y[delta == 0] = NA
 #'
