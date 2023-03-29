@@ -17,6 +17,7 @@ library(EFI)
 ## Example commands
 
 ``` r
+# Import data and generate missingness
 data(HairEyeColor)
 p = 3
 Y = do.call("rbind", apply(as.data.frame.table(HairEyeColor), 1, 
@@ -30,6 +31,7 @@ names(Y) <- names(dimnames(HairEyeColor))
 delta = matrix(rbinom(n * p, 1, 0.5), nr = n, nc = p)
 Y[delta == 0] = NA
 
+# Ensemble Fractional Imputation
 cand.edges = as.list(data.frame(combn(p, 2)))
 dp = doublep(Y, cand.edges, freq = F)
 EFI = efi(Y, dp, freq = F)
