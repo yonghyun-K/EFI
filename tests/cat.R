@@ -20,6 +20,7 @@ data(older, package = "cat")
 # EFI = efi(Y, dp)
 # estimate(EFI, "(V1 == 1) & (V2 == 2)")
 
+data(older, package = "cat")
 p = 6
 cand.edges = as.list(data.frame(combn(p, 2)))
 Y = data.frame(older, stringsAsFactors= T)
@@ -59,10 +60,14 @@ EFI = efi(Y, dp,  freq = T)
 estimate(EFI, "(I1 == 1) & (I2 == 2)")
 estimate(EFI, "(I2 == 2) & (B2 == 2)")
 
+cvamEstimate(~ I2 + B2, cvam(~ I2 * B2, data = Y, freq = Freq)) # prob = 0.5880
+cvamEstimate(~ I2 + B2, cvam(~ I1 * I2 * B2 * D * S * B1, data = Y, freq = Freq)) # prob = 0.2153
+
+
 # summary(glm(as.numeric(Y$I1) == 1 ~ as.numeric(Y$D), family = binomial(link = "identity"), weights = Y$Freq))
 # summary(glm(as.numeric(Y$I1) == 1 ~ as.numeric(Y$S), family = binomial(link = "identity"), weights = Y$Freq))
 
-data(HairEyeColor, package = "cat")
+data(HairEyeColor)
 
 p = 3
 Y = do.call("rbind", apply(as.data.frame.table(HairEyeColor), 1, function(x) matrix(rep(x[1:p], each = x[p+1]), nc = p)))
@@ -72,7 +77,7 @@ for(k in 1:p){
   # levels(Y[[k]]) <- as.character(1:nlevels(Y[[k]]))
 }
 (n = nrow(Y)); sum(HairEyeColor)
-delta = matrix(rbinom(n * p, 1, 0.9), nr = n, nc = p)
+delta = matrix(rbinom(n * p, 1, 0.5), nr = n, nc = p)
 Y[delta == 0] = NA
 
 cand.edges = as.list(data.frame(combn(p, 2)))
