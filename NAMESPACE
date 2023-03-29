@@ -15,6 +15,7 @@ importFrom(dplyr,summarise)
 
 import(CVXR)
 importFrom(plyr, alply)
+importFrom(plyr, adply)
 import(cat)
 import(igraph)
 import(cvam)
