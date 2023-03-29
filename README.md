@@ -19,7 +19,8 @@ library(EFI)
 ``` r
 data(HairEyeColor)
 p = 3
-Y = do.call("rbind", apply(as.data.frame.table(HairEyeColor), 1, function(x) matrix(rep(x[1:p], each = x[p+1]), nc = p)))
+Y = do.call("rbind", apply(as.data.frame.table(HairEyeColor), 1, 
+  function(x) matrix(rep(x[1:p], each = x[p+1]), nc = p)))
 Y = as.data.frame(Y)
 for(k in 1:p){
   Y[[k]] = factor(Y[[k]])
