@@ -16,6 +16,29 @@ library(EFI)
 
 ## Example commands
 
+``` r
+# Import data and generate missingness.
+data(HairEyeColor)
+p = 3
+Y = do.call("rbind", apply(as.data.frame.table(HairEyeColor), 1, 
+  function(x) matrix(rep(x[1:p], each = x[p+1]), nc = p)))
+Y = as.data.frame(Y)
+for(k in 1:p){
+  Y[[k]] = factor(Y[[k]])
+}
+names(Y) <- names(dimnames(HairEyeColor))
+(n = nrow(Y)); sum(HairEyeColor)
+delta = matrix(rbinom(n * p, 1, 0.5), nr = n, nc = p)
+Y[delta == 0] = NA
+
+# Ensemble Fractional Imputation.
+cand.edges = as.list(data.frame(combn(p, 2)))
+dp = doublep(Y, cand.edges, freq = F)
+EFI = efi(Y, dp, freq = F)
+estimate(EFI, "(Hair == \"Black\") & (Eye == \"Brown\")")
+estimate(EFI, "(Hair == \"Black\") & (Sex == \"Male\")")
+```
+
 ## Externel Links
 - [CRAN Task View: Missing Data](https://cran.r-project.org/web/views/MissingData.html)
 
