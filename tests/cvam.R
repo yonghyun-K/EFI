@@ -11,6 +11,50 @@ names(Y)
 lapply(Y, levels)
 summary(Y)
 
+estimate(EFI, "(V1 == \"no\") & (V2 == \"no\")")
+estimate(EFI, "(V1 == \"yes\") & (V2 == \"yes\")")
+
+sum(EFI$imp[3:4,5])
+
+library(cvam)
+
+cvamEstimate(~ V1 + V2, cvam(~V1 * V2, data = Y, freq = n), data = Y)
+
+EFI$imp
+
+Y[3, 3] <- 1000
+
+p = 2
+Y2 = do.call("rbind", apply(Y, 1, function(x) matrix(rep(x[1:p], each = x[p+1]), nc = p)))
+Y2 = as.data.frame(Y2)
+for(k in 1:p){
+  Y2[[k]] = factor(Y2[[k]])
+}
+names(Y2) <- colnames(crime)[1:2]
+miceres = mice::mice(Y2, printFlag = F)
+mean(mice::complete(miceres, action = 5)[469:1468,1] == "no")
+
+# tmp2 = sapply(1:5, function(x) mean(apply(mice::complete(miceres, action = x), 1, function(y) all(y == c("no", "no")) )))
+# var(tmp2)
+# mean(tmp2)
+
+micefit <-mice:::with.mids(data = miceres, exp = lm((V1 == "no") & (V2 == "no") ~ 1))
+summary(mice::pool(micefit))
+tmp <- mice::pool(micefit)
+sqrt(tmp$pooled$b)
+sqrt(tmp$pooled$ubar)
+sqrt(tmp$pooled$estimate * (1 - tmp$pooled$estimate) / nrow(Y2))
+
+dp = doublep(Y2, cand.edges, freq = F)
+EFI = efi(Y2, dp, freq = F)
+names(Y)
+lapply(Y, levels)
+summary(Y)
+
+estimate(EFI, "(V1 == \"no\") & (V2 == \"no\")")
+estimate(EFI, "(V1 == \"yes\") & (V2 == \"yes\")")
+
+
 data(hivtest, package = "cvam")
 
 Y = hivtest
