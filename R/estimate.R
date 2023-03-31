@@ -33,7 +33,7 @@ estimate = function(efi.obj, expr){
   # print(model.summ$terms)
   Estimate = model.summ$coefficients[1]
   U = model.summ$coefficients[2]^2
-  B = eval(parse(text = paste("sum(imp %>% group_by(id) %>% dplyr::summarise(sum(w[", expr, "]), sum(w)) %>% {ifelse(.[[3]] == 0, 0, .[[2]] * (.[[3]] - .[[2]]) / .[[3]])}) / n^2")), envir = imp)
+  B = eval(parse(text = paste("sum(imp %>% group_by(id) %>% dplyr::summarise(sum(w[", expr, "]), sum(w)) %>% {ifelse(.[[3]] == 0, 0, .[[2]] * (.[[3]] - .[[2]]) / .[[3]])}) / (Estimate * n)^2")), envir = imp)
 
   Std.Error = sqrt(U + B)
   return(list(call = call, expr = expr, Estimate = Estimate, Std.Error = Std.Error, sqrtU = sqrt(U), sqrtB = sqrt(B)))
