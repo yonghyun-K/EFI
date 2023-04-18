@@ -37,57 +37,95 @@ for(k in 1:p){
   df_true[[k]] <- as.factor(df_true[[k]])
 }
 
+modes = sapply(df_true, function(x) names(which.max(table(x))))
+
 levelone = names(which.max(summary(df_true[[1]])))
 trueval = mean(df_true[[1]] == levelone, na.rm = T)
 
-miss_rate_vec = seq(from = 0.1, to = 0.5, length = 4)
+mis_rate_vec = seq(from = 0.1, to = 0.9, length = 5)
 
 cores = min(detectCores() - 3, 100)
 myCluster <- makeCluster(cores, # number of cores to use
-                         type = "PSOCK",
+                         type = "PSOCK", setup_strategy = "sequential",
                          outfile = timenow) # type of cluster
 registerDoParallel(myCluster)
-SIMNUM = 5
+SIMNUM = 200
 
 oper <-
-  foreach(miss_rate_idx= 1:length(miss_rate_vec), .packages = c("CVXR", "mice", "missForest", "Amelia", "EFI")) %:%
+  foreach(mis_rate_idx= 1:length(mis_rate_vec), .packages = c("CVXR", "mice", "missForest", "Amelia", "EFI")) %:%
   foreach(simnum = 1:SIMNUM, .combine='cbind', .packages = c("CVXR", "mice", "missForest", "Amelia", "EFI")) %dopar% {
-    print(paste("miss_rate_idx = ", miss_rate_idx))
+    print(paste("mis_rate_idx = ", mis_rate_idx))
     print(paste("simnum = ", simnum))
-    miss_rate = miss_rate_vec[miss_rate_idx]
-    # print(miss_rate)
+    mis_rate = mis_rate_vec[mis_rate_idx]
+    obs_rate = 1 - mis_rate
+    # print(mis_rate)
     df <- df_true
 
-    for(k in 1:p){
-      df[sample(1:n, round(n * miss_rate)),k] <- NA
-    }
+    # MCAR
+    # for(k in 1:p){
+    #   df[sample(1:n, round(n * mis_rate)),k] <- NA
+    # }
+
+    # MAR
+    # p2 = round(p / 2)
+    # delta = apply(df_true, 1, function(y){
+    #   deltav = integer(p)
+    #   tmpval = sample(1:p, 1)
+    #   tmpidx = (tmpval:(tmpval + p2 - 1)) %% p + 1
+    #   deltav[tmpidx] = 1
+    #   if(tmpval %% 2 == 0){
+    #     deltav[-tmpidx] = rbinom(p2,1,ifelse(y[tmpidx] == modes[tmpidx], min(c(3 * obs_rate, 1)), max(c(obs_rate / 3, 0))))[1:(p - p2)]
+    #   }else{
+    #     deltav[-tmpidx] = rbinom(p2,1,ifelse(y[tmpidx] == modes[tmpidx], max(c(obs_rate / 3, 0)), min(c(3 * obs_rate, 1))))[1:(p - p2)]
+    #   }
+    #   # deltav[-tmpidx] = rbinom(p2,1,ifelse(y[tmpidx] == 1, 0.1, 0.9))
+    #
+    #   deltav
+    # })
+    # delta = t(delta)
+
+    tmpidx = order(abs(cor(sweep(df_true, 2, modes, "=="))[1,]), decreasing = T)[2]
+    delta = apply(df_true, 1, function(y){
+      deltav = rep(1, p)
+      deltav[1] = rbinom(1,1,ifelse(y[tmpidx] == modes[tmpidx], min(c(3 * obs_rate, 1)), max(c(obs_rate / 3, 0))))
+      deltav
+    })
+    delta = t(delta)
+    mean(delta)
+
+    df[delta == 0] <- NA
+    print("Missing values are generated")
 
     # imp_mice <- mice(df, m = 5, seed = 123, printFlag = F)
     # df_mice = complete(imp_mice,1:5)
 
-    imp_missF <- missForest(cbind(1, df))
-    df_missF = imp_missF$ximp[-1]
+    # imp_missF <- missForest(cbind(1, df))
+    # df_missF = imp_missF$ximp[-1]
+    # print("missForest successfully done")
 
-    imp_Amelia <- amelia(df, noms = names(df), p2s = 0)
-    df_Amelia = do.call("rbind", imp_Amelia$imputations)
+    # imp_Amelia <- amelia(df, noms = names(df), p2s = 0)
+    # df_Amelia = do.call("rbind", imp_Amelia$imputations)
+    # print("Amelia successfully done")
 
     edges_list = apply(rbind(1, 2:p), 2, list)
     # edges_list = apply(combn(p, 2), 2, list)
-    dp = doublep(df, edges_list)
+    dp = doublep(df, edges_list, R = 1)
     imp_EFI = efi(df, dp)
+    print("EFI successfully done")
 
     result = c(CC = mean(df[[1]] == levelone, na.rm = T),
-               EFI = sum((imp_EFI$imp[[1]] == levelone) * ( imp_EFI$imp$w)) / n,
+               EFI = sum((imp_EFI$imp[[1]] == levelone) * ( imp_EFI$imp$w)) / n
                # estimate(imp_EFI, "(Class_Values == \"unacc\")"),
                # MICE = mean(df_mice[[1]] == levelone),
-               missF = mean(df_missF[[1]] == levelone),
-               Amelia = mean(df_Amelia[[1]] == levelone, na.rm = T))
+               # missF = mean(df_missF[[1]] == levelone),
+               # Amelia = mean(df_Amelia[[1]] == levelone, na.rm = T)
+               )
 
     result
 
   }
 stopCluster(myCluster)
-names(oper) <- miss_rate_vec
+names(oper) <- mis_rate_vec
 
 res = do.call("rbind", lapply(oper, function(x) sqrt(rowMeans((x - trueval)^2))))
 
@@ -96,9 +134,10 @@ do.call("rbind", lapply(oper, function(x) rowMeans(x - trueval)))
 res_long = reshape2::melt(res)
 names(res_long) = c("missrate", "method", "value")
 
+png(filename=paste(timenow0, "1.png", sep = ""))
 ggplot(res_long, aes(x = missrate, y = value, color = method)) +
   geom_line() +
-  scale_x_continuous(breaks = miss_rate_vec) +
+  scale_x_continuous(breaks = mis_rate_vec) +
   xlab("Missing rate") +
   ylab("RMSE") +
   # scale_color_manual(values = c("CC" = "red", "EFI" = "black", "MICE" = "blue", "missF" = "green", "Amelia" = "purple")) +
@@ -112,17 +151,11 @@ ggplot(res_long, aes(x = missrate, y = value, color = method)) +
         legend.text = element_text(size = 14),
         legend.position = "top",
         panel.grid.major = element_line(color = "gray", linetype = "dashed"))
+dev.off()
 
 timenow2 = Sys.time()
 print(timenow2 - timenow1)
 
-ggplot(res_long, aes(x = missrate, y = value, color = method)) +
-  geom_line() +
-  scale_x_continuous(breaks = miss_rate_vec) +
-  xlab("Missing rate") +
-  ylab("RMSE") +
-  scale_color_manual(values = c("CC" = "red", "EFI" = "black", "MICE" = "blue", "missF" = "green", "Amelia" = "purple")) +
-  ggtitle("Comparison of imputation methods") +
-  theme_bw()
+
 
 
