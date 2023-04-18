@@ -31,14 +31,14 @@
 
 efi = function(Y, dp, freq = F){
   if(class(dp) != "doublep") stop("dp must have class doublep")
-  weightvec = dp$weightvec
+  weightveclist = dp$weightveclist
   weightmat = dp$weightmat
-  cand.edges = dp$cand.edges
   supp = dp$supp
   n = dp$n
   p = dp$p
-  marginalProb = dp$marginalProb
+  marginalProbmat = dp$marginalProbmat
   namesY = dp$namesY
+  edges_list1 = dp$edges_list1
 
   if(!freq) Y = cbind(Y, Freq = 1)
   else colnames(Y)[ncol(Y)] <- "Freq"
@@ -53,13 +53,13 @@ efi = function(Y, dp, freq = F){
     }
   })
 
-  marginalProbmat = sapply(Y[-ncol(Y)], function(x) cvamLik(~ x, cvam(~ x, data = Y, freq = Freq), data = Y)$likVal)
-  marginalProbmat = as.data.frame(marginalProbmat)
-  tmpmat = sapply(cand.edges[weightvec != 0], function(x){
-    apply(select(marginalProbmat, -x), 1, prod) *
-      cvamLik(formula(paste("~", paste(namesY[x], collapse = "+"))), cvam(formula(paste("~", paste(namesY[x], collapse = "*"))), data = Y, freq = Freq), data = Y)$likVal
-  })
-  tmpmat = as.data.frame(tmpmat)
+  tmpvec1 = c(sapply(dp$edges_list1, function(x){
+    # print(x)
+    apply(select(marginalProbmat, -unique(unlist(x))), 1, prod) *
+      cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
+              cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
+                   data = Y, freq = Freq), data = Y)$likVal
+  }))
 
   marginalProbmat2 =sapply(names(Y)[-ncol(Y)], function(x){
     form = as.formula(paste("~", x))
@@ -67,20 +67,20 @@ efi = function(Y, dp, freq = F){
   })
   marginalProbmat2 = as.data.frame(marginalProbmat2)
 
-  tmpmat2 = sapply(cand.edges[weightvec != 0], function(x){
-    apply(select(marginalProbmat2, -x), 1, prod) *
-      cvamLik(formula(paste("~", paste(namesY[x], collapse = "+"))), cvam(formula(paste("~", paste(namesY[x], collapse = "*"))), data = Y, freq = Freq), data = Y_FI0)$likVal
-  })
-  tmpmat2 = as.data.frame(tmpmat2)
+  tmpvec2 = c(sapply(dp$edges_list1, function(x){
+    # print(x)
+    apply(select(marginalProbmat2, -unique(unlist(x))), 1, prod) *
+      cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
+              cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
+                   data = Y, freq = Freq), data = Y_FI0)$likVal
+  }))
 
   timestmp = unlist(table(Y_FI0$id))
-  restmp = mapply(function(x, y) return(x / rep(y, times = timestmp)), tmpmat2, tmpmat)
 
-  w = apply(restmp, 1, function(x) sum(x * weightvec))
+  w = tmpvec2 / rep(tmpvec1, times = timestmp)
   Y_FI0 = cbind(Y_FI0, w = w * Y_FI0$Freq)
 
-  edges = cand.edges[weightvec != 0]
-  EFI = list(imp = Y_FI0, edges = edges, weightmat = weightmat, n = n)
+  EFI = list(imp = Y_FI0, edges_list1 = edges_list1, weightmat = weightmat, n = n)
 
   class(EFI) <- "efi"
   return(EFI)

@@ -21,7 +21,7 @@
 #' dp = doublep(Y, cand.edges, freq = F)
 #' @export
 
-doublep = function(Y, cand.edges, freq = F){
+doublep = function(Y, edges_list, freq = F, R = 5){
   if(!freq) Y = cbind(Y, Freq = 1)
   else colnames(Y)[ncol(Y)] <- "Freq"
 
@@ -31,49 +31,68 @@ doublep = function(Y, cand.edges, freq = F){
   supplen = sapply(supp, length)
   namesY = names(Y[-ncol(Y)])
 
-  # grid_tmp = expand.grid(supp)
-  # marginalProb =lapply(Y[-ncol(Y)], function(x) xtabs(Freq ~ x, Y, addNA = F) / sum(xtabs(Freq ~ x, Y, addNA = F)))
-  # mat = sapply(cand.edges, function(x){
-  #   thetahat <- array(get.fitted(cvam(formula(paste("~", paste(namesY[x], collapse = "*"))), data = Y, freq = Freq))$fit, dim = supplen[x])
-  #   dimnames(thetahat) <- supp[x]
-  #
-  #   list_tmp = append(list(thetahat), marginalProb[-x])
-  #
-  #   apply(grid_tmp, 1, function(y)
-  #     prod(c(list_tmp[[1]][t(y[x])], mapply(function(z, y) z[y], list_tmp[2:(p-1)], y[-(x)]))))
-  # })
-  # tmpmat = apply(Y[-ncol(Y)], 1, function(y){
-  #   colSums(mat[apply(grid_tmp, 1, function(x) all(x[which(!is.na(y))] == y[which(!is.na(y))] )), ,drop = F])
-  # })
-  # tmpmat = t(tmpmat)
+  # sampleIdx = sample(1:n, round(n / 2))
+  # Y1 = Y[sampleIdx, ]
+  # Y2 = Y[-sampleIdx, ]
 
-  marginalProb = lapply(Y[-ncol(Y)], function(x) get.fitted( cvam(~ x, data = Y, freq = Freq), mfTrue  = F))
+  # marginalProb = lapply(Y[-ncol(Y)], function(x) get.fitted( cvam(~ x, data = Y, freq = Freq), mfTrue  = F))
 
-  marginalProbmat =sapply(Y[-ncol(Y)], function(x) cvamLik(~ x, cvam(~ x, data = Y, freq = Freq), data = Y)$likVal)
+  marginalProbmat = sapply(colnames(Y)[-ncol(Y)], function(x) {
+    formula = as.formula(paste("~", x))
+    cvamLik(formula, cvam(formula, data = Y, freq = Freq), data = Y)$likVal
+  })
   marginalProbmat = as.data.frame(marginalProbmat)
 
-  tmpmat = sapply(cand.edges, function(x){
-    # print(x)
-    apply(select(marginalProbmat, -x), 1, prod) *
-      cvamLik(formula(paste("~", paste(namesY[x], collapse = "+"))), cvam(formula(paste("~", paste(namesY[x], collapse = "*"))), data = Y, freq = Freq), data = Y)$likVal
-  })
+  edges_list1 = NULL
+  edges_list2 = edges_list
 
-  w = CVXR::Variable(length(cand.edges))
-  constraints <- list(sum(w) == 1, w >= 0)
-  Phi_R <- Maximize(sum(Y$Freq * log(tmpmat %*% w)))
-  prob <- Problem(Phi_R, constraints)
-  res <- solve(prob, solver = "ECOS")
+  weightveclist = NULL
+  for(r in 1:R){
+    print(r)
 
-  if(res$status != "optimal" & res$status != "optimal_inaccurate") stop(paste("CVXR solver error: res$status =", res$status))
+    tmpmat = sapply(c(edges_list1, edges_list2), function(x){
+      # print(x)
+      apply(select(marginalProbmat, -unique(unlist(x))), 1, prod) *
+        cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
+                cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
+                     data = Y, freq = Freq), data = Y)$likVal
+    })
 
-  weightvec = round(c(res$getValue(w)), 3)
-  weightvec = weightvec / sum(weightvec)
+    w = CVXR::Variable(ncol(tmpmat))
+    constraints <- list(sum(w) == 1, w >= 0)
+    Phi_R <- Maximize(sum(Y$Freq * log(tmpmat %*% w)))
+    prob <- Problem(Phi_R, constraints)
+    # res <- solve(prob, solver = "ECOS")
+    res <- solve(prob)
+    # print(paste("res$solver", res$solver))
+
+
+    if(res$status != "optimal" & res$status != "optimal_inaccurate") stop(paste("CVXR solver error: res$status =", res$status))
+    # print(paste("res$value", res$value))
+
+    weightvec = round(c(res$getValue(w)), 3)
+    weightvec = weightvec / sum(weightvec)
+    # print(paste("sum(Y$Freq * log(tmpmat %*% w))", sum(Y$Freq * log(tmpmat %*% weightvec))))
+    tmpidx = setdiff(1:length(weightvec), sequence(length(edges_list1)))
+    # print(tmpidx)
+    weightveclist = append(weightveclist, list(weightvec))
+    if(length(edges_list2[weightvec[tmpidx] != 0]) == 0) break
+    # print(weightvec[tmpidx])
+
+    edges_list1 = list(append(edges_list1[[1]], lapply(edges_list2[weightvec[tmpidx] != 0], unlist)))
+    print(edges_list1)
+    print(lapply(edges_list1[[1]], function(x) names(Y)[x]))
+    # print(edges_list2[weightvec[tmpidx] != 0])
+    edges_list2 = edges_list2[weightvec[tmpidx] == 0]
+  }
 
   weightmat = matrix(0, nr = p, nc = p)
-  weightmat[t(sapply(cand.edges, cbind))] <- weightvec # This should be corrected
+  weightmat[do.call("rbind", edges_list1[[1]])] <- 1
   weightmat[lower.tri(weightmat)] <- t(weightmat)[lower.tri(weightmat)]
-  dp <- list(weightvec = weightvec, weightmat = weightmat, #mat = mat, grid_tmp = grid_tmp,
-             cand.edges = cand.edges, supp = supp, n = n, p = p, marginalProb = marginalProb,
+
+  dp <- list(weightveclist = weightveclist, weightmat = weightmat, #mat = mat, grid_tmp = grid_tmp,
+             edges_list = edges_list, edges_list1 = edges_list1, edges_list2 = edges_list2,
+             supp = supp, n = n, p = p, marginalProbmat = marginalProbmat,
              namesY = namesY)
   class(dp) <- "doublep"
   return(dp)
