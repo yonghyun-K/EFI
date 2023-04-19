@@ -1,13 +1,18 @@
 library(readr)
 library(tidyr)
 library(dplyr)
+library(reshape2)
 library(doParallel)
+
+library(vcd)
 
 library(mice)
 library(missForest)
 library(ggplot2)
 library(Amelia)
 library(EFI)
+
+set.seed(123)
 
 timenow1 = Sys.time()
 timenow0 = gsub(' ', '_', gsub('[-:]', '', timenow1))
@@ -16,19 +21,76 @@ timenow = paste(timenow0, ".txt", sep = "")
 # sink(timenow, append=TRUE)
 
 spect_names <- c("OVERALL_DIAGNOSIS", "F1R", "F1S", "F2R", "F2S", "F3R", "F3S", "F4R", "F4S", "F5R", "F5S", "F6R", "F6S", "F7R", "F7S", "F8R", "F8S", "F9R", "F9S", "F10R", "F10S", "F11R", "F11S", "F12R", "F12S", "F13R", "F13S", "F14R", "F14S", "F15R", "F15S", "F16R", "F16S", "F17R", "F17S", "F18R", "F18S")
-spect_data_train <- read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/spect/SPECT.train", col_names = spect_names)
-spect_data_test <- read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/spect/SPECT.test", col_names = spect_names)
+spect_data_train <- read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/spect/SPECT.train", col_names = spect_names,
+                             col_types = cols(.default = "f"))
+spect_data_test <- read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/spect/SPECT.test", col_names = spect_names,
+                            col_types = cols(.default = "f"))
 spect_data = rbind(spect_data_train, spect_data_test)
 
 promoters_data <- read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/molecular-biology/promoter-gene-sequences/promoters.data", col_names=FALSE)
-# Define the column names
 colnames(promoters_data) <- c("Class", "id", "Sequence")
 promoters_data <- separate(promoters_data, Sequence, into = paste0("pos_", 1:57), sep = "")
-promoters_data <- select(promoters_data, -id, -pos_1)
+promoters_data <- promoters_data %>% dplyr::select(-id, -pos_1) %>% mutate_all(factor)
 
-car_data <- read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/car/car.data", col_names=c("buying", "maint", "doors", "persons", "lug_boot", "safety", "class_values"))
+mushroom_names <- c("class", "cap.shape", "cap.surface", "cap.color", "bruises", "odor",
+                    "gill.attachment", "gill.spacing", "gill.size", "gill.color",
+                    "stalk.shape", "stalk.root", "stalk.surface.above.ring",
+                    "stalk.surface.below.ring", "stalk.color.above.ring",
+                    "stalk.color.below.ring", "veil.type", "veil.color", "ring.number",
+                    "ring.type", "spore.print.color", "population", "habitat")
+mushroom_data <- read_csv("http://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.data", col_names = mushroom_names,
+                          col_types = cols(.default = "f"))
+mushroom_data <- mushroom_data[,sapply(mushroom_data, nlevels) > 1]
+# lapply(mushroom_data, levels)
+
+column_names <- c("age_gt_60", "air", "airBoneGap", "ar_c", "ar_u", "bone", "boneAbnormal", "bser",
+                  "history_buzzing", "history_dizziness", "history_fluctuating", "history_fullness",
+                  "history_heredity", "history_nausea", "history_noise", "history_recruitment",
+                  "history_ringing", "history_roaring", "history_vomiting", "late_wave_poor", "m_at_2k",
+                  "m_cond_lt_1k", "m_gt_1k", "m_m_gt_2k", "m_m_sn", "m_m_sn_gt_1k", "m_m_sn_gt_2k",
+                  "m_m_sn_gt_500", "m_p_sn_gt_2k", "m_s_gt_500", "m_s_sn", "m_s_sn_gt_1k", "m_s_sn_gt_2k",
+                  "m_s_sn_gt_3k", "m_s_sn_gt_4k", "m_sn_2_3k", "m_sn_gt_1k", "m_sn_gt_2k", "m_sn_gt_3k",
+                  "m_sn_gt_4k", "m_sn_gt_500", "m_sn_gt_6k", "m_sn_lt_1k", "m_sn_lt_2k", "m_sn_lt_3k",
+                  "middle_wave_poor", "mod_gt_4k", "mod_mixed", "mod_s_mixed", "mod_s_sn_gt_500",
+                  "mod_sn", "mod_sn_gt_1k", "mod_sn_gt_2k", "mod_sn_gt_3k", "mod_sn_gt_4k", "mod_sn_gt_500",
+                  "notch_4k", "notch_at_4k", "o_ar_c", "o_ar_u", "s_sn_gt_1k", "s_sn_gt_2k", "s_sn_gt_4k",
+                  "speech", "static_normal", "tymp", "viith_nerve_signs", "wave_V_delayed", "waveform_ItoV_prolonged",
+                  "identifier", "class")
+audiology <- read_csv("http://archive.ics.uci.edu/ml/machine-learning-databases/audiology/audiology.standardized.data",
+                      col_types = cols(.default = "f"), col_names = column_names)
+audiology <- (audiology %>% dplyr::select(-identifier))
+audiology <- audiology[c(ncol(audiology), 1:(ncol(audiology)-1))]
+# lapply(audiology, levels)
+
+
+chess_data <- read_csv("http://archive.ics.uci.edu/ml/machine-learning-databases/chess/king-rook-vs-king-pawn/kr-vs-kp.data",
+                       col_types = cols(.default = "f"))
+colnames(chess_data) <- c("bkblk", "bknwy", "bkon8", "bkona", "bkspr", "bkxbq", "bkxcr", "bkxwp", "blxwp", "bxqsq",
+         "cntxt", "dsopp", "dwipd", "hdchk", "katri", "mulch", "qxmsq", "r2ar8", "reskd", "reskr",
+         "rimmx", "rkxwp", "rxmsq", "simpl", "skach", "skewr", "skrxp", "spcop", "stlmt", "thrsk",
+         "wkcti", "wkna8", "wknck", "wkovl", "wkpos", "wtoeg", "won")
+chess_data <- chess_data[c(ncol(chess_data), 1:(ncol(chess_data)-1))]
+
+
+car_data <- read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/car/car.data",
+                     col_names=c("buying", "maint", "doors", "persons", "lug_boot", "safety", "class_values"),
+                     col_types = cols(.default = "f"))
 colnames(car_data) <- c("Buying", "Maintenance", "Doors", "Persons", "Lug_Boot", "Safety", "Class_Values")
 car_data <- car_data[c(ncol(car_data), 1:(ncol(car_data)-1))]
+
+as.data.frame.table(HairEyeColor) %>% uncount(Freq)
+as.data.frame.table(Titanic) %>% uncount(Freq)
+as.data.frame.table(UCBAdmissions) %>% uncount(Freq)
+
+esoph_data <- melt(esoph)
+esoph_data <- esoph_data %>% uncount(value)
+names(esoph_data)[ncol(esoph_data)] <- "Freq"
+
+data(PreSex, package = "vcd")
+as.data.frame.table(PreSex) %>% uncount(Freq)
+
+# data(UKSoccer, package = "vcd")
+# as.data.frame.table(UKSoccer)
 
 df_true = spect_data
 p = ncol(df_true)
@@ -129,7 +191,10 @@ names(oper) <- mis_rate_vec
 
 res = do.call("rbind", lapply(oper, function(x) sqrt(rowMeans((x - trueval)^2))))
 
-do.call("rbind", lapply(oper, function(x) rowMeans(x - trueval)))
+do.call("rbind", lapply(oper, function(x) rowMeans(x - trueval))) # BIAS
+do.call("rbind", lapply(oper, function(x) sqrt(apply(x, 1, function(y) mean((y - mean(y))^2) )))) # SE
+# apply(oper[[1]], 1, function(x) mean(x) - trueval) # BIAS
+# sqrt(apply(oper[[1]], 1, function(x) mean((x - mean(x))^2))) # SE
 
 res_long = reshape2::melt(res)
 names(res_long) = c("missrate", "method", "value")
