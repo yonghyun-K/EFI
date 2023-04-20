@@ -20,7 +20,8 @@ set.seed(123)
 SIMNUM = 200
 
 high_dim = T
-MAR = F
+MAR = T
+
 
 # data_name = "chess_data"
 
@@ -229,7 +230,7 @@ oper <-
       print("MICE successfully done")
     }else{
 
-      imp_missF <- tryCatch(withTimeout({missForest(cbind(1, df))}, timeout = 60),
+      imp_missF <- tryCatch(withTimeout({missForest(cbind(1, df))}, timeout = 60 * 10),
                             error = function(e) {
                               cat("An error occurred: ", conditionMessage(e))
                             })
@@ -252,7 +253,7 @@ oper <-
       apply(combn(p, 2), 2, list)
 
     imp_EFI <- tryCatch(withTimeout({dp <- doublep(df, edges_list, R = 1)
-    efi(df, dp)}, timeout = 60),
+    efi(df, dp)}, timeout = 60 * 10),
                           error = function(e) {
                             cat("An error occurred: ", conditionMessage(e))
                           })
@@ -275,13 +276,13 @@ oper <-
     modeacc = mean(complete_CC[,nacols,drop = F] == df_true[,nacols,drop = F])
     modeval = mean(df[[1]] == levelone, na.rm = T)
 
-    result1 = c(CC = modeval,
-               EFI = EFIval,
+    result1 = c(EFI = EFIval,
+                CC = modeval,
                # estimate(imp_EFI, "(Class_Values == \"unacc\")"),
                vals
                )
-    result2 = c(mode = modeacc,
-                EFI = EFIacc,
+    result2 = c(EFI = EFIacc,
+                mode = modeacc,
                 accs)
     c(result1, result2)
 
@@ -369,8 +370,9 @@ for(idx in 1:length(res_list)){
   names(res_long) = names(res2_long) = c("missrate", "method", "value")
   # res_long <- res_long %>% filter(method != "pmm") # pmm not good
 
-  plot_res = ggplot(res_long, aes(x = missrate, y = value, color = method)) +
-    geom_line() +
+  plot_res = ggplot(res_long, aes(x = missrate, y = value, group = method)) +
+    geom_line(aes(color = method), linetype = 2) +
+    geom_line(data = filter(res_long, method == "EFI"), aes(color = "EFI"), size = 2) +
     scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
     labs(x = NULL, y = NULL) +
     ggtitle(data_name, subtitle = paste("n = ", n, ", p = ", p)) +
@@ -382,8 +384,9 @@ for(idx in 1:length(res_list)){
           legend.text = element_text(size = 14),
           legend.position = "top")
 
-  plot_res2 = ggplot(res2_long, aes(x = missrate, y = value, color = method)) +
-    geom_line() +
+  plot_res2 = ggplot(res2_long, aes(x = missrate, y = value, group = method)) +
+    geom_line(aes(color = method), linetype = 2) +
+    geom_line(data = filter(res2_long, method == "EFI"), aes(color = "EFI"), size = 2) +
     scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
     labs(x = NULL, y = NULL) +
     ggtitle(data_name, subtitle = paste("n = ", n, ", p = ", p)) +
@@ -401,13 +404,13 @@ for(idx in 1:length(res_list)){
 
 plot_agg <- ggarrange(plotlist = plot_list, nrow = 1, common.legend = TRUE, legend="bottom")
 
-png(filename=paste(timenow0, "_", "RMSE", ".png", sep = ""),  width = 480 * length(data_list),  height = 480)
+png(filename=paste(ifelse(high_dim, "highd", "lowd"), "_", ifelse(MAR, "MAR", "MCAR"), "_","RMSE", ".png", sep = ""),  width = 300 * length(data_list),  height = 480)
 annotate_figure(plot_agg, left = "RMSE")
 dev.off()
 
 plot_agg2 <- ggarrange(plotlist = plot_list2, nrow = 1, common.legend = TRUE, legend="bottom")
 
-png(filename=paste(timenow0, "_", "Accuracy", ".png", sep = ""),  width = 480 * length(data_list),  height = 480)
+png(filename=paste(ifelse(high_dim, "highd", "lowd"), "_", ifelse(MAR, "MAR", "MCAR"), "_", "Accuracy", ".png", sep = ""),  width = 300 * length(data_list),  height = 480)
 annotate_figure(plot_agg2, left = "Accuracy")
 dev.off()
 
