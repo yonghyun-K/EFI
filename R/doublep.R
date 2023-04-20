@@ -62,12 +62,25 @@ doublep = function(Y, edges_list, freq = F, R = 5){
     constraints <- list(sum(w) == 1, w >= 0)
     Phi_R <- Maximize(sum(Y$Freq * log(tmpmat %*% w)))
     prob <- Problem(Phi_R, constraints)
-    # res <- solve(prob, solver = "ECOS")
-    res <- solve(prob)
+    res <- solve(prob, solver = "ECOS")
+    # res <- solve(prob)
     # print(paste("res$solver", res$solver))
+CVXR::installed_solvers()
+
+    if(res$status != "optimal" & res$status != "optimal_inaccurate"){
+      res <- solve(prob, solver = "ECOS_BB")
+    }
+    if(res$status != "optimal" & res$status != "optimal_inaccurate"){
+      res <- solve(prob, solver = "SCS")
+    }
+    if(res$status != "optimal" & res$status != "optimal_inaccurate"){
+      res <- solve(prob, solver = "OSQP")
+    }
+if(res$status != "optimal" & res$status != "optimal_inaccurate"){
+  stop(paste("CVXR solver error: res$status =", res$status))
+}
 
 
-    if(res$status != "optimal" & res$status != "optimal_inaccurate") stop(paste("CVXR solver error: res$status =", res$status))
     # print(paste("res$value", res$value))
 
     weightvec = round(c(res$getValue(w)), 3)
