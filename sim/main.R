@@ -17,13 +17,16 @@ library(ggpubr)
 set.seed(123)
 SIMNUM = 200
 
-# data_name = "esoph"
-data_list = c("Titanic", "esoph", "PreSex", "car", "UCBAdmissions")
+# data_name = "HairEyeColor"
+data_list = c("UCBAdmissions", "Titanic", "esoph", "PreSex", "car")
 # data_list = c("HairEyeColor", "Titanic")
 
 timenow1 = Sys.time()
 timenow0 = gsub(' ', '_', gsub('[-:]', '', timenow1))
 timenow = paste(timenow0, ".txt", sep = "")
+
+dir.create(timenow0)
+setwd(timenow0)
 
 cores = min(detectCores() - 3, 100)
 myCluster <- makeCluster(cores, # number of cores to use
@@ -108,8 +111,8 @@ PreSex <- as.data.frame.table(PreSex) %>% uncount(Freq)
 # data(UKSoccer, package = "vcd")
 # as.data.frame.table(UKSoccer)
 
-plot_list <- NULL
 res_list <- NULL
+res2_list <- NULL
 for(data_name in data_list){
 eval(parse(text = paste("df_true =", data_name)))
 df_true = df_true %>%
@@ -127,11 +130,11 @@ modes = sapply(df_true, function(x) names(which.max(table(x))))
 levelone = names(which.max(summary(df_true[[1]])))
 trueval = mean(df_true[[1]] == levelone, na.rm = T)
 
-mis_rate_vec = seq(from = 0.1, to = 0.9, length = 4)
+mis_rate_vec = seq(from = 0.1, to = 0.9, length = 9)
 
 oper <-
-  foreach(mis_rate_idx= 1:length(mis_rate_vec), .packages = c("CVXR", "mice", "missForest", "Amelia", "EFI")) %:%
-  foreach(simnum = 1:SIMNUM, .combine='cbind', .packages = c("CVXR", "mice", "missForest", "Amelia", "EFI")) %dopar% {
+  foreach(mis_rate_idx= 1:length(mis_rate_vec), .packages = c("CVXR", "mice", "missForest", "Amelia", "EFI","dplyr")) %:%
+  foreach(simnum = 1:SIMNUM, .combine='cbind', .packages = c("CVXR", "mice", "missForest", "Amelia", "EFI", "dplyr")) %dopar% {
 
 # mis_rate_idx = 4
 #       for(simnum in 1:SIMNUM){
@@ -185,9 +188,41 @@ oper <-
   }
     print("Missing values are generated")
 
-    imp_mice <- mice(df, m = 5, seed = 123, printFlag = F)
-    df_mice = complete(imp_mice,1:5)
+    methods_mice = c("polyreg", "pmm", "cart", "lda")
+
+    micevals = c()
+    miceaccs = c()
+    for(method in methods_mice){
+      imp_mice <- tryCatch(mice(df, m = 5, seed = 123, printFlag = F, method = method),
+               error = function(e) {
+                 cat("An error occurred: ", conditionMessage(e))
+               })
+      if(!is.null(imp_mice)){
+        df_mice = complete(imp_mice,1:5)
+        micevals = c(micevals, mean(df_mice[[1]] == levelone))
+        miceaccs = c(miceaccs, mean(complete(imp_mice) == df_true))
+      }else{
+        micevals = NA
+        miceaccs = NA
+      }
+    }
     print("MICE successfully done")
+
+    # imp_mice_polyreg <- mice(df, m = 5, seed = 123, printFlag = F, method = "polyreg")
+    # df_mice_polyreg = complete(imp_mice_polyreg,1:5)
+    # print("MICE polyreg successfully done")
+    #
+    # imp_mice_pmm <- mice(df, m = 5, seed = 123, printFlag = F, method = "pmm")
+    # df_mice_pmm = complete(imp_mice_pmm,1:5)
+    # print("MICE pmm successfully done")
+    #
+    # imp_mice_cart <- mice(df, m = 5, seed = 123, printFlag = F, method = "cart")
+    # df_mice_cart = complete(imp_mice_cart,1:5)
+    # print("MICE cart successfully done")
+    #
+    # imp_mice_lda <- mice(df, m = 5, seed = 123, printFlag = F, method = "lda")
+    # df_mice_lda = complete(imp_mice_lda,1:5)
+    # print("MICE lda successfully done")
 
     # imp_missF <- missForest(cbind(1, df))
     # df_missF = imp_missF$ximp[-1]
@@ -197,46 +232,80 @@ oper <-
     # df_Amelia = do.call("rbind", imp_Amelia$imputations)
     # print("Amelia successfully done")
 
-    df$agegp
-
     # edges_list = apply(rbind(1, 2:p), 2, list)
     edges_list = apply(combn(p, 2), 2, list)
     dp = doublep(df, edges_list, R = 1)
     imp_EFI = efi(df, dp)
     print("EFI successfully done")
 
-    result = c(CC = mean(df[[1]] == levelone, na.rm = T),
+    complete_CC = df
+    for (k in 1:p) {
+      complete_CC[, k][is.na(complete_CC[, k])] <- modes[k]
+    }
+
+    modeacc = mean(complete_CC == df_true)
+
+    complete_EFI = imp_EFI$imp %>% group_by(id) %>% summarize(maxw = max(w)) %>%
+      left_join(imp_EFI$imp, by = c("id", "maxw" = "w"), multiple = "first") %>%
+      select(-maxw, -Freq, -id)
+
+    if(nrow(complete_EFI)!= n){
+      print(complete_EFI)
+      print(paste("nrow(complete_EFI) = ", nrow(complete_EFI)))
+      EFIacc = NA
+    }else{
+      EFIacc = mean(complete_EFI == df_true)
+    }
+
+    result1 = c(CC = mean(df[[1]] == levelone, na.rm = T),
                EFI = sum((imp_EFI$imp[[1]] == levelone) * ( imp_EFI$imp$w)) / n,
                # estimate(imp_EFI, "(Class_Values == \"unacc\")"),
-               MICE = mean(df_mice[[1]] == levelone)
+               # MICE = mean(df_mice[[1]] == levelone)
+               polyreg = micevals[1],
+               pmm = micevals[2],
+               cart = micevals[3],
+               lda = micevals[4]
                # missF = mean(df_missF[[1]] == levelone)
                # Amelia = mean(df_Amelia[[1]] == levelone, na.rm = T)
                )
-
-    result
+    result2 = c(mode = modeacc,
+                EFI = EFIacc,
+                polyreg = miceaccs[1],
+                pmm = miceaccs[2],
+                cart = miceaccs[3],
+                lda = miceaccs[4])
+    c(result1, result2)
 
   }
 
 names(oper) <- mis_rate_vec
 
-(res = do.call("rbind", lapply(oper, function(x) sqrt(rowMeans((x - trueval)^2, na.rm = T)))))
+
+oper1 = lapply(oper, function(x) x[1:(nrow(x) / 2),])
+oper2 = lapply(oper, function(x) x[(nrow(x) / 2 + 1):nrow(x),])
+
+(res = do.call("rbind", lapply(oper1, function(x) sqrt(rowMeans((x - trueval)^2, na.rm = T)))))
+res2 = do.call("rbind", lapply(oper2, rowMeans, na.rm = T))
 
 res_list = append(res_list, list(res))
+res2_list = append(res2_list, list(res2))
 
-(do.call("rbind", lapply(oper, function(x) rowMeans(x - trueval, na.rm = T)))) # BIAS
-(do.call("rbind", lapply(oper, function(x) sqrt(apply(x, 1, function(y) mean((y - mean(y, na.rm = T))^2, na.rm = T) ))))) # SE
-# apply(oper[[1]], 1, function(x) mean(x) - trueval) # BIAS
-# sqrt(apply(oper[[1]], 1, function(x) mean((x - mean(x))^2))) # SE
+(do.call("rbind", lapply(oper1, function(x) rowMeans(x - trueval, na.rm = T)))) # BIAS
+(do.call("rbind", lapply(oper1, function(x) sqrt(apply(x, 1, function(y) mean((y - mean(y, na.rm = T))^2, na.rm = T) ))))) # SE
+# apply(oper1[[1]], 1, function(x) mean(x) - trueval) # BIAS
+# sqrt(apply(oper1[[1]], 1, function(x) mean((x - mean(x))^2))) # SE
 
+##############
 res_long = reshape2::melt(res)
-names(res_long) = c("missrate", "method", "value")
+res2_long = reshape2::melt(res2)
+names(res_long) = names(res2_long) = c("missrate", "method", "value")
+# res_long <- res_long %>% filter(method != "pmm") # pmm not good
 
-png(filename=paste(timenow0, "_", data_name, ".png", sep = ""))
 plot_res = ggplot(res_long, aes(x = missrate, y = value, color = method)) +
   geom_line() +
-  scale_x_continuous(breaks = mis_rate_vec) +
+  scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
   labs(x = NULL, y = NULL) +
-  ggtitle(data_name) +
+  ggtitle(data_name, subtitle = paste("n = ", n, ", p = ", p)) +
   theme_bw() +
   theme(panel.grid.major = element_line(color = "gray", linetype = "dashed"),
         panel.background = element_rect(fill = "white"),
@@ -244,19 +313,94 @@ plot_res = ggplot(res_long, aes(x = missrate, y = value, color = method)) +
         legend.title = element_text(size = 16),
         legend.text = element_text(size = 14),
         legend.position = "top")
+
+png(filename=paste(timenow0, "_", "RMSE", "_", data_name, ".png", sep = ""))
 plot(plot_res)
 dev.off()
-plot_list = append(plot_list, list(plot_res))
+
+plot_res2 = ggplot(res2_long, aes(x = missrate, y = value, color = method)) +
+  geom_line() +
+  scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
+  labs(x = NULL, y = NULL) +
+  ggtitle(data_name, subtitle = paste("n = ", n, ", p = ", p)) +
+  theme_bw() +
+  theme(panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+        panel.background = element_rect(fill = "white"),
+        plot.title = element_text(size = 20, hjust = 0.5),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 14),
+        legend.position = "top")
+
+png(filename=paste(timenow0, "_", "Accuracy", "_", data_name, ".png", sep = ""))
+plot(plot_res2)
+dev.off()
+#####################
+
+
+save.image(paste(timenow0, ".RData", sep = ""))
 }
 stopCluster(myCluster)
-
-png(filename=paste(timenow0, "_", "aggregate", ".png", sep = ""))
-ggarrange(plotlist = plot_list, nrow = 1, common.legend = TRUE, legend="bottom")
-dev.off()
 
 timenow2 = Sys.time()
 print(timenow2 - timenow1)
 
 save.image(paste(timenow0, ".RData", sep = ""))
+
+plot_list = NULL
+plot_list2 = NULL
+for(idx in 1:length(res_list)){
+  res = res_list[idx]
+  res2 = res2_list[idx]
+  data_name = data_list[idx]
+  data_again = eval(parse(text = data_name))
+  p = ncol(data_again)
+  n = nrow(data_again)
+
+  res_long = reshape2::melt(res)
+  res2_long = reshape2::melt(res2)
+  names(res_long) = names(res2_long) = c("missrate", "method", "value")
+  # res_long <- res_long %>% filter(method != "pmm") # pmm not good
+
+  plot_res = ggplot(res_long, aes(x = missrate, y = value, color = method)) +
+    geom_line() +
+    scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
+    labs(x = NULL, y = NULL) +
+    ggtitle(data_name, subtitle = paste("n = ", n, ", p = ", p)) +
+    theme_bw() +
+    theme(panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+          panel.background = element_rect(fill = "white"),
+          plot.title = element_text(size = 20, hjust = 0.5),
+          legend.title = element_text(size = 16),
+          legend.text = element_text(size = 14),
+          legend.position = "top")
+
+  plot_res2 = ggplot(res2_long, aes(x = missrate, y = value, color = method)) +
+    geom_line() +
+    scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
+    labs(x = NULL, y = NULL) +
+    ggtitle(data_name, subtitle = paste("n = ", n, ", p = ", p)) +
+    theme_bw() +
+    theme(panel.grid.major = element_line(color = "gray", linetype = "dashed"),
+          panel.background = element_rect(fill = "white"),
+          plot.title = element_text(size = 20, hjust = 0.5),
+          legend.title = element_text(size = 16),
+          legend.text = element_text(size = 14),
+          legend.position = "top")
+
+  plot_list = append(plot_list, list(plot_res))
+  plot_list2 = append(plot_list2, list(plot_res2))
+}
+
+plot_agg <- ggarrange(plotlist = plot_list, nrow = 1, common.legend = TRUE, legend="bottom")
+
+png(filename=paste(timenow0, "_", "RMSE", ".png", sep = ""),  width = 480 * length(data_list),  height = 480)
+annotate_figure(plot_agg, left = "RMSE")
+dev.off()
+
+plot_agg2 <- ggarrange(plotlist = plot_list2, nrow = 1, common.legend = TRUE, legend="bottom")
+
+png(filename=paste(timenow0, "_", "Accuracy", ".png", sep = ""),  width = 480 * length(data_list),  height = 480)
+annotate_figure(plot_agg2, left = "Accuracy")
+dev.off()
 
 # load("~/GitHub/EFI/sim/ws1.RData")
