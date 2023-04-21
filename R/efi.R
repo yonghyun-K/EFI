@@ -43,8 +43,11 @@ efi = function(Y, dp, freq = F){
   if(!freq) Y = cbind(Y, Freq = 1)
   else colnames(Y)[ncol(Y)] <- "Freq"
 
-  namestmp = names(cbind(Y, id = 1:nrow(Y)))
-  Y_FI0 = adply(cbind(Y, id = 1:nrow(Y)), 1, function(Z){
+  Y_reduced = Y %>% select(unique(unlist(edges_list1)), Freq)
+  Y_reduced = bind_cols(Y_reduced, dplyr::select(Y %>% select_if(~ any(is.na(.))), -matches(names(Y_reduced))))
+
+  namestmp = names(cbind(Y, id = 1:n))
+  Y_FI0 = plyr::adply(cbind(Y, id = 1:n), 1, function(Z){
     if(any(is.na(Z))){
       tmpY = cbind(expand.grid(lapply(Z[,is.na(Z),drop = F], levels)), Z[,!is.na(Z)])[namestmp]
       return(tmpY)
@@ -52,27 +55,28 @@ efi = function(Y, dp, freq = F){
       Z
     }
   })
+  Y_FI0_reduced = Y_FI0 %>% select(colnames(Y_reduced))
 
   tmpvec1 = c(sapply(dp$edges_list1, function(x){
     # print(x)
     apply(select(marginalProbmat, -unique(unlist(x))), 1, prod) *
-      cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
-              cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
-                   data = Y, freq = Freq), data = Y)$likVal
+      cvam::cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
+                    cvam::cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
+                   data = Y_reduced, freq = Freq), data = Y_reduced)$likVal
   }))
 
   marginalProbmat2 =sapply(names(Y)[-ncol(Y)], function(x){
     form = as.formula(paste("~", x))
-    cvamLik(form, cvam(form, data = Y, freq = Freq), data = Y_FI0)$likVal
+    cvam::cvamLik(form, cvam::cvam(form, data = Y, freq = Freq), data = Y_FI0)$likVal
   })
   marginalProbmat2 = as.data.frame(marginalProbmat2)
 
   tmpvec2 = c(sapply(dp$edges_list1, function(x){
     # print(x)
-    apply(select(marginalProbmat2, -unique(unlist(x))), 1, prod) *
-      cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
-              cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
-                   data = Y, freq = Freq), data = Y_FI0)$likVal
+    apply(dplyr::select(marginalProbmat2, -unique(unlist(x))), 1, prod) *
+      cvam::cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
+                    cvam::cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
+                   data = Y_reduced, freq = Freq), data = Y_FI0_reduced)$likVal
   }))
 
   timestmp = unlist(table(Y_FI0$id))

@@ -20,10 +20,10 @@ set.seed(123)
 SIMNUM = 200
 
 high_dim = T
-MAR = T
+MAR = F
 
 
-# data_name = "chess_data"
+# data_name = "promoters_data"
 
 if(high_dim == F){
   data_list = c("UCBAdmissions", "Titanic", "esoph", "PreSex", "car")
@@ -40,7 +40,7 @@ setwd(timenow0)
 
 cores = min(detectCores() - 3, 100)
 myCluster <- makeCluster(cores, # number of cores to use
-                         type = "PSOCK", setup_strategy = "sequential",
+                         type = "PSOCK",
                          outfile = timenow) # type of cluster
 registerDoParallel(myCluster)
 
@@ -232,7 +232,7 @@ oper <-
 
       imp_missF <- tryCatch(withTimeout({missForest(cbind(1, df))}, timeout = 60 * 10),
                             error = function(e) {
-                              cat("An error occurred: ", conditionMessage(e))
+                              cat("An error occurred in missF: ", conditionMessage(e))
                             })
 
       # imp_missF <- missForest(cbind(1, df))
@@ -249,14 +249,31 @@ oper <-
       accs = c(missF = ifelse(!is.null(imp_missF), mean(imp_missF$ximp[-1][,nacols,drop = F] == df_true[,nacols,drop = F]), NA))
     }
 
-    edges_list <- if(high_dim == T) apply(rbind(1, 2:p), 2, list) else
-      apply(combn(p, 2), 2, list)
+    complete_CC = df
+    for (k in 1:p) {
+      complete_CC[, k][is.na(complete_CC[, k])] <- modes[k]
+    }
 
-    imp_EFI <- tryCatch(withTimeout({dp <- doublep(df, edges_list, R = 1)
-    efi(df, dp)}, timeout = 60 * 10),
+    modeacc = mean(complete_CC[,nacols,drop = F] == df_true[,nacols,drop = F])
+    modeval = mean(df[[1]] == levelone, na.rm = T)
+
+    if(high_dim){
+      df <- df %>% select(order(cor(sweep(df[complete.cases(df),], 2, modes, "=="))[1,], decreasing = T)[1:6])
+      nacols <- 1
+    }
+
+    edges_list <- if(high_dim == T) apply(rbind(1, 2:ncol(df)), 2, list) else
+      apply(combn(ncol(df), 2), 2, list)
+
+    dp <- tryCatch(withTimeout({doublep(df, edges_list, R = 1)}, timeout = 60),
                           error = function(e) {
-                            cat("An error occurred: ", conditionMessage(e))
+                            cat("An error occurred in dp: ", conditionMessage(e))
                           })
+    imp_EFI <- tryCatch(withTimeout({efi(df, dp)}, timeout = 60),
+    error = function(e) {
+      cat("An error occurred in efi: ", conditionMessage(e))
+    })
+
     if(!is.null(imp_EFI)){
       complete_EFI = imp_EFI$imp %>% group_by(id) %>% summarize(maxw = max(w)) %>%
         left_join(imp_EFI$imp, by = c("id", "maxw" = "w"), multiple = "first") %>%
@@ -267,14 +284,6 @@ oper <-
       EFIval = NA
       EFIacc = NA
     }
-
-    complete_CC = df
-    for (k in 1:p) {
-      complete_CC[, k][is.na(complete_CC[, k])] <- modes[k]
-    }
-
-    modeacc = mean(complete_CC[,nacols,drop = F] == df_true[,nacols,drop = F])
-    modeval = mean(df[[1]] == levelone, na.rm = T)
 
     result1 = c(EFI = EFIval,
                 CC = modeval,
@@ -310,8 +319,9 @@ res2_long = reshape2::melt(res2)
 names(res_long) = names(res2_long) = c("missrate", "method", "value")
 # res_long <- res_long %>% filter(method != "pmm") # pmm not good
 
-plot_res = ggplot(res_long, aes(x = missrate, y = value, color = method)) +
-  geom_line() +
+plot_res = ggplot(res_long, aes(x = missrate, y = value, group = method)) +
+  geom_line(aes(color = method), linetype = 2) +
+  geom_line(data = filter(res_long, method == "EFI"), aes(color = "EFI"), size = 2) +
   scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
   labs(x = NULL, y = NULL) +
   ggtitle(data_name, subtitle = paste("n = ", n, ", p = ", p)) +
@@ -327,8 +337,9 @@ png(filename=paste(timenow0, "_", "RMSE", "_", data_name, ".png", sep = ""))
 plot(plot_res)
 dev.off()
 
-plot_res2 = ggplot(res2_long, aes(x = missrate, y = value, color = method)) +
-  geom_line() +
+plot_res2 = ggplot(res2_long, aes(x = missrate, y = value, group = method)) +
+  geom_line(aes(color = method), linetype = 2) +
+  geom_line(data = filter(res2_long, method == "EFI"), aes(color = "EFI"), size = 2) +
   scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
   labs(x = NULL, y = NULL) +
   ggtitle(data_name, subtitle = paste("n = ", n, ", p = ", p)) +
