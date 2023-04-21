@@ -154,7 +154,7 @@ oper <-
     print(paste("mis_rate_idx = ", mis_rate_idx))
     print(paste("simnum = ", simnum))
     mis_rate = mis_rate_vec[mis_rate_idx]
-    # mis_rat = 0.9
+    # mis_rate = 0.2
     obs_rate = 1 - mis_rate
     # print(mis_rate)
 
@@ -378,7 +378,7 @@ for(idx in 1:length(res_list)){
 
   res_long = reshape2::melt(res)
   res2_long = reshape2::melt(res2)
-  names(res_long) = names(res2_long) = c("missrate", "method", "value")
+  names(res_long)[1:3] = names(res2_long)[1:3] = c("missrate", "method", "value")
   # res_long <- res_long %>% filter(method != "pmm") # pmm not good
 
   plot_res = ggplot(res_long, aes(x = missrate, y = value, group = method)) +
