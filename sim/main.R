@@ -17,10 +17,10 @@ library(ggplot2)
 library(ggpubr)
 
 set.seed(123)
-SIMNUM = 200
+SIMNUM = 100
 
 high_dim = T
-MAR = F
+MAR = T
 
 
 # data_name = "promoters_data"
@@ -28,7 +28,7 @@ MAR = F
 if(high_dim == F){
   data_list = c("UCBAdmissions", "Titanic", "esoph", "PreSex", "car")
 }else{
-  data_list = c("spect_data", "mushroom_data", "promoters_data", "chess_data", "audiology")
+  data_list = c("spect_data", "promoters_data", "chess_data", "audiology", "mushroom_data")
 }
 
 timenow1 = Sys.time()
@@ -44,7 +44,7 @@ myCluster <- makeCluster(cores, # number of cores to use
                          outfile = timenow) # type of cluster
 registerDoParallel(myCluster)
 
-# sink(timenow, append=TRUE)
+if(!interactive()) sink(timenow, append=TRUE)
 
 spect_names <- c("OVERALL_DIAGNOSIS", "F1R", "F1S", "F2R", "F2S", "F3R", "F3S", "F4R", "F4S", "F5R", "F5S", "F6R", "F6S", "F7R", "F7S", "F8R", "F8S", "F9R", "F9S", "F10R", "F10S", "F11R", "F11S", "F12R", "F12S", "F13R", "F13S", "F14R", "F14S", "F15R", "F15S", "F16R", "F16S", "F17R", "F17S", "F18R", "F18S")
 spect_data_train <- read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/spect/SPECT.train", col_names = spect_names,
@@ -164,15 +164,9 @@ oper <-
       print(cnt)
     df <- df_true
 
-
-    if(high_dim == F & MAR == F){
-      # MCAR
+    if(MAR == F){
       delta = sapply(1:p, function(x) rbinom(n, 1, obs_rate) == 1)
-    }else if(high_dim == T & MAR == F){
-      # MCAR - high dim
-      delta = matrix(1, nr =  n, nc = p)
-      delta[,1] = (rbinom(n, 1, obs_rate) == 1)
-    }else if(high_dim == F & MAR == T){
+    }else{
       # MAR
       p2 = round(p / 2)
       delta = apply(df_true, 1, function(y){
@@ -190,16 +184,43 @@ oper <-
         deltav
       })
       delta = t(delta)
-    }else if(high_dim == T & MAR == T){
-      # MAR - high dim
-      tmpidx = order(abs(cor(sweep(df_true, 2, modes, "=="))[1,]), decreasing = T)[2:5]
-      delta = apply(df_true, 1, function(y){
-        deltav = rep(1, p)
-        deltav[1] = rbinom(1,1,ifelse(y[sample(tmpidx, 1)] == modes[sample(tmpidx, 1)], min(c(3 * obs_rate, 1)), max(c(obs_rate / 3, 0))))
-        deltav
-      })
-      delta = t(delta)
     }
+
+    # if(high_dim == F & MAR == F){
+    #   # MCAR
+    #   delta = sapply(1:p, function(x) rbinom(n, 1, obs_rate) == 1)
+    # }else if(high_dim == T & MAR == F){
+    #   # MCAR - high dim
+    #   delta = matrix(1, nr =  n, nc = p)
+    #   delta[,1] = (rbinom(n, 1, obs_rate) == 1)
+    # }else if(high_dim == F & MAR == T){
+    #   # MAR
+    #   p2 = round(p / 2)
+    #   delta = apply(df_true, 1, function(y){
+    #     deltav = integer(p)
+    #     tmpval = sample(1:p, 1)
+    #     tmpidx = (tmpval:(tmpval + p2 - 1)) %% p + 1
+    #     deltav[tmpidx] = 1
+    #     if(tmpval %% 2 == 0){
+    #       deltav[-tmpidx] = rbinom(p2,1,ifelse(y[tmpidx] == modes[tmpidx], min(c(3 * obs_rate, 1)), max(c(obs_rate / 3, 0))))[1:(p - p2)]
+    #     }else{
+    #       deltav[-tmpidx] = rbinom(p2,1,ifelse(y[tmpidx] == modes[tmpidx], max(c(obs_rate / 3, 0)), min(c(3 * obs_rate, 1))))[1:(p - p2)]
+    #     }
+    #     # deltav[-tmpidx] = rbinom(p2,1,ifelse(y[tmpidx] == 1, 0.1, 0.9))
+    #
+    #     deltav
+    #   })
+    #   delta = t(delta)
+    # }else if(high_dim == T & MAR == T){
+    #   # MAR - high dim
+    #   tmpidx = order(abs(cor(sweep(df_true, 2, modes, "=="))[1,]), decreasing = T)[2:5]
+    #   delta = apply(df_true, 1, function(y){
+    #     deltav = rep(1, p)
+    #     deltav[1] = rbinom(1,1,ifelse(y[sample(tmpidx, 1)] == modes[sample(tmpidx, 1)], min(c(3 * obs_rate, 1)), max(c(obs_rate / 3, 0))))
+    #     deltav
+    #   })
+    #   delta = t(delta)
+    # }
 
     df[delta == 0] <- NA
 
@@ -246,7 +267,7 @@ oper <-
       # Amelia = mean(df_Amelia[[1]] == levelone, na.rm = T)
 
       vals = c(missF = ifelse(!is.null(imp_missF), mean(imp_missF$ximp[-1][[1]] == levelone), NA))
-      accs = c(missF = ifelse(!is.null(imp_missF), mean(imp_missF$ximp[-1][,nacols,drop = F] == df_true[,nacols,drop = F]), NA))
+      accs = c(missF = ifelse(!is.null(imp_missF), mean(imp_missF$ximp[-1][is.na(df)] == df_true[is.na(df)]), NA))
     }
 
     complete_CC = df
@@ -254,22 +275,44 @@ oper <-
       complete_CC[, k][is.na(complete_CC[, k])] <- modes[k]
     }
 
-    modeacc = mean(complete_CC[,nacols,drop = F] == df_true[,nacols,drop = F])
+    modeacc = mean(complete_CC[is.na(df)] == df_true[is.na(df)])
     modeval = mean(df[[1]] == levelone, na.rm = T)
 
-    if(high_dim){
-      df <- df %>% select(order(cor(sweep(df[complete.cases(df),], 2, modes, "=="))[1,], decreasing = T)[1:6])
-      nacols <- 1
+    # if(high_dim){
+    #   df <- df %>% select(order(cor(sweep(df[complete.cases(df),], 2, modes, "=="))[1,], decreasing = T)[1:6])
+    #   nacols <- 1
+    # }
+
+    if(high_dim == T){
+      # varidx =  combn(p, 2)
+      varidx =  combn(p, 2)[,1:(p-1)]
+
+      edges_list = list()
+      itmp = 1
+      while(T){
+        tmplist <- plyr::alply(varidx[,sample(1:ncol(varidx), round(sqrt(p)))],2,c)
+        attributes(tmplist) <- NULL
+        if((1 %in% unique(unlist(tmplist)))){
+          edges_list[[itmp]] <- tmplist
+          itmp = itmp + 1
+        }
+        if(itmp > 100) break
+      }
+
+    }else{
+      edges_list <- apply(combn(ncol(df), 2), 2, list)
     }
 
-    edges_list <- if(high_dim == T) apply(rbind(1, 2:ncol(df)), 2, list) else
-      apply(combn(ncol(df), 2), 2, list)
-
-    dp <- tryCatch(withTimeout({doublep(df, edges_list, R = 1)}, timeout = 60),
+    dp <- tryCatch(withTimeout({doublep(df, edges_list, R = 1)}, timeout = 60 * 10),
                           error = function(e) {
                             cat("An error occurred in dp: ", conditionMessage(e))
                           })
-    imp_EFI <- tryCatch(withTimeout({efi(df, dp)}, timeout = 60),
+
+    dp$edges_list1
+
+    # order(abs(cor(df_true[,1] == 1, df_true == 1)), decreasing = T)
+
+    imp_EFI <- tryCatch(withTimeout({efi(df, dp)}, timeout = 60 * 10),
     error = function(e) {
       cat("An error occurred in efi: ", conditionMessage(e))
     })
@@ -279,14 +322,14 @@ oper <-
         left_join(imp_EFI$imp, by = c("id", "maxw" = "w"), multiple = "first") %>%
         select(-maxw, -Freq, -id)
       EFIval = sum((imp_EFI$imp[[1]] == levelone) * ( imp_EFI$imp$w)) / n
-      EFIacc = mean(complete_EFI[,nacols,drop = F] == df_true[,nacols,drop = F])
+      EFIacc = mean(complete_EFI[is.na(df)] == df_true[is.na(df)])
     }else{
       EFIval = NA
       EFIacc = NA
     }
 
     result1 = c(EFI = EFIval,
-                CC = modeval,
+                mode = modeval,
                # estimate(imp_EFI, "(Class_Values == \"unacc\")"),
                vals
                )

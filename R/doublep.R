@@ -51,7 +51,7 @@ doublep = function(Y, edges_list, freq = F, R = 5){
     print(r)
 
     tmpmat = sapply(c(edges_list1, edges_list2), function(x){
-      # print(x)
+      # print(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))))
       apply(select(marginalProbmat, -unique(unlist(x))), 1, prod) *
         cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
                 cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
@@ -65,7 +65,7 @@ doublep = function(Y, edges_list, freq = F, R = 5){
     res <- solve(prob, solver = "ECOS")
     # res <- solve(prob)
     # print(paste("res$solver", res$solver))
-CVXR::installed_solvers()
+    # CVXR::installed_solvers()
 
     if(res$status != "optimal" & res$status != "optimal_inaccurate"){
       res <- solve(prob, solver = "ECOS_BB")
@@ -92,8 +92,10 @@ if(res$status != "optimal" & res$status != "optimal_inaccurate"){
     if(length(edges_list2[weightvec[tmpidx] != 0]) == 0) break
     # print(weightvec[tmpidx])
 
-    edges_list1 = list(append(edges_list1[[1]], lapply(edges_list2[weightvec[tmpidx] != 0], unlist)))
+    edges_list1 = append(edges_list1[[1]], edges_list2[weightvec[tmpidx] != 0])
+    # edges_list1 = list(append(edges_list1[[1]], lapply(edges_list2[weightvec[tmpidx] != 0], unlist)))
     print(edges_list1)
+
     print(lapply(edges_list1[[1]], function(x) names(Y)[x]))
     # print(edges_list2[weightvec[tmpidx] != 0])
     edges_list2 = edges_list2[weightvec[tmpidx] == 0]

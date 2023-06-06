@@ -57,13 +57,21 @@ efi = function(Y, dp, freq = F){
   })
   Y_FI0_reduced = Y_FI0 %>% select(colnames(Y_reduced))
 
-  tmpvec1 = c(sapply(dp$edges_list1, function(x){
+  # tmpvec1 = c(sapply(dp$edges_list1, function(x){
+  #   # print(x)
+  #   apply(select(marginalProbmat, -unique(unlist(x))), 1, prod) *
+  #     cvam::cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
+  #                   cvam::cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
+  #                  data = Y_reduced, freq = Freq), data = Y_reduced)$likVal
+  # }))
+
+  tmpvec1 = apply(sapply(dp$edges_list1, function(x){
     # print(x)
     apply(select(marginalProbmat, -unique(unlist(x))), 1, prod) *
       cvam::cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
                     cvam::cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
-                   data = Y_reduced, freq = Freq), data = Y_reduced)$likVal
-  }))
+                               data = Y_reduced, freq = Freq), data = Y_reduced)$likVal
+  }), 1, weighted.mean, w = weightveclist[[1]][weightveclist[[1]]!= 0])
 
   marginalProbmat2 =sapply(names(Y)[-ncol(Y)], function(x){
     form = as.formula(paste("~", x))
@@ -71,13 +79,21 @@ efi = function(Y, dp, freq = F){
   })
   marginalProbmat2 = as.data.frame(marginalProbmat2)
 
-  tmpvec2 = c(sapply(dp$edges_list1, function(x){
+  # tmpvec2 = c(sapply(dp$edges_list1, function(x){
+  #   # print(x)
+  #   apply(dplyr::select(marginalProbmat2, -unique(unlist(x))), 1, prod) *
+  #     cvam::cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
+  #                   cvam::cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
+  #                  data = Y_reduced, freq = Freq), data = Y_FI0_reduced)$likVal
+  # }))
+
+  tmpvec2 = apply(sapply(dp$edges_list1, function(x){
     # print(x)
     apply(dplyr::select(marginalProbmat2, -unique(unlist(x))), 1, prod) *
       cvam::cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
                     cvam::cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
-                   data = Y_reduced, freq = Freq), data = Y_FI0_reduced)$likVal
-  }))
+                               data = Y_reduced, freq = Freq), data = Y_FI0_reduced)$likVal
+  }), 1, weighted.mean, w = weightveclist[[1]][weightveclist[[1]]!= 0])
 
   timestmp = unlist(table(Y_FI0$id))
 
