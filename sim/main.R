@@ -23,12 +23,12 @@ high_dim = T
 MAR = T
 
 
-# data_name = "promoters_data"
+# data_name = "audiology"
 
 if(high_dim == F){
   data_list = c("UCBAdmissions", "Titanic", "esoph", "PreSex", "car")
 }else{
-  data_list = c("spect_data", "promoters_data", "chess_data", "audiology", "mushroom_data")
+  data_list = c("spect_data", "mushroom_data", "promoters_data", "chess_data")
 }
 
 timenow1 = Sys.time()
@@ -128,9 +128,11 @@ eval(parse(text = paste("df_true =", data_name)))
 df_true = df_true %>%
     mutate_if(is.ordered, factor, ordered = F)
 
-df_true <- df_true[,sapply(df_true, nlevels) > 1]
+df_true <- df_true[,sapply(df_true, nlevels) > 1 & sapply(df_true, nlevels) < 6]
+# df_true <- df_true[,sapply(df_true, nlevels) > 1]
 
 modes = sapply(df_true, function(x) names(which.max(table(x))))
+df_true <- df_true[,mapply(function(x, y) sum(x == y), df_true, modes) / nrow(df_true) < 0.9]
 
 # df_true = car
 p = ncol(df_true)
@@ -138,6 +140,7 @@ n = nrow(df_true)
 # for(k in 1:p){
 #   df_true[[k]] <- as.factor(df_true[[k]])
 # }
+modes = sapply(df_true, function(x) names(which.max(table(x))))
 
 levelone = names(which.max(summary(df_true[[1]])))
 trueval = mean(df_true[[1]] == levelone, na.rm = T)
@@ -267,7 +270,7 @@ oper <-
       # Amelia = mean(df_Amelia[[1]] == levelone, na.rm = T)
 
       vals = c(missF = ifelse(!is.null(imp_missF), mean(imp_missF$ximp[-1][[1]] == levelone), NA))
-      accs = c(missF = ifelse(!is.null(imp_missF), mean(imp_missF$ximp[-1][is.na(df)] == df_true[is.na(df)]), NA))
+      accs = c(missF = ifelse(!is.null(imp_missF), mean(imp_missF$ximp[-1][is.na(df[,1]), 1, drop = F] == df_true[is.na(df[,1]),1, drop = F]), NA))
     }
 
     complete_CC = df
@@ -275,7 +278,7 @@ oper <-
       complete_CC[, k][is.na(complete_CC[, k])] <- modes[k]
     }
 
-    modeacc = mean(complete_CC[is.na(df)] == df_true[is.na(df)])
+    modeacc = mean(complete_CC[is.na(df[,1]),1, drop = F] == df_true[is.na(df[,1]),1, drop = F])
     modeval = mean(df[[1]] == levelone, na.rm = T)
 
     # if(high_dim){
@@ -308,7 +311,7 @@ oper <-
                             cat("An error occurred in dp: ", conditionMessage(e))
                           })
 
-    dp$edges_list1
+    # dp$edges_list1
 
     # order(abs(cor(df_true[,1] == 1, df_true == 1)), decreasing = T)
 
@@ -321,8 +324,12 @@ oper <-
       complete_EFI = imp_EFI$imp %>% group_by(id) %>% summarize(maxw = max(w)) %>%
         left_join(imp_EFI$imp, by = c("id", "maxw" = "w"), multiple = "first") %>%
         select(-maxw, -Freq, -id)
+      # complete_EFI = imp_EFI$imp %>% group_by(id, .[[1]]) %>% summarize(sumw = sum(w)) %>%
+      #   filter(sumw == max(sumw))  %>% ungroup() %>%
+      #   left_join(imp_EFI$imp, by = c("id"), multiple = "first") %>%
+      #   select(-sumw, -Freq, -".[[1]]", -id, -w)
       EFIval = sum((imp_EFI$imp[[1]] == levelone) * ( imp_EFI$imp$w)) / n
-      EFIacc = mean(complete_EFI[is.na(df)] == df_true[is.na(df)])
+      EFIacc = mean(complete_EFI[is.na(df[,1]),1, drop = F] == df_true[is.na(df[,1]),1, drop = F])
     }else{
       EFIval = NA
       EFIacc = NA
