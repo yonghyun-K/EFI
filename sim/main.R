@@ -12,6 +12,7 @@ library(mice)
 library(missForest)
 library(Amelia)
 library(EFI)
+library(igraph)
 
 library(ggplot2)
 library(ggpubr)
@@ -148,8 +149,8 @@ trueval = mean(df_true[[1]] == levelone, na.rm = T)
 mis_rate_vec = seq(from = 0.1, to = 0.9, length = 9)
 
 oper <-
-  foreach(mis_rate_idx= 1:length(mis_rate_vec), .packages = c("R.utils", "CVXR", "mice", "missForest", "Amelia", "EFI","dplyr")) %:%
-  foreach(simnum = 1:SIMNUM, .combine='cbind', .packages = c("R.utils", "CVXR", "mice", "missForest", "Amelia", "EFI", "dplyr")) %dopar% {
+  foreach(mis_rate_idx= 1:length(mis_rate_vec), .packages = c("R.utils", "CVXR", "mice", "missForest", "Amelia", "EFI","dplyr", "igraph")) %:%
+  foreach(simnum = 1:SIMNUM, .combine='cbind', .packages = c("R.utils", "CVXR", "mice", "missForest", "Amelia", "EFI", "dplyr", "igraph")) %dopar% {
 
 # mis_rate_idx = 4
 #       for(simnum in 1:SIMNUM){
@@ -331,10 +332,15 @@ oper <-
       tmpidx = combn(ncol(varidx), round(sqrt(p)))
       edges_list = list()
 
+      cnt = 0
       for (tmp in 1:ncol(tmpidx)){
         tmplist <- plyr::alply(varidx[,tmpidx[,tmp]],2,c)
         attributes(tmplist) <- NULL
-        edges_list[[tmp]] <- tmplist
+        g <- igraph::graph_from_edgelist(do.call("rbind", tmplist), directed = F)
+        if(!igraph::has_eulerian_cycle(g)){
+          cnt = cnt + 1
+          edges_list[[cnt]] <- tmplist
+        }
       }
     }
 
