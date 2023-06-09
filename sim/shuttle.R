@@ -280,11 +280,12 @@ save.image(paste(timenow0, ".RData", sep = ""))
 for(misidx in 1:length(mis_rate_vec)){
   misrate =mis_rate_vec[misidx]
   matrix_data = oper[[misidx]]
+  # matrix_data = do.call("rbind", unlist(dp$edges_list1, recursive = F))
   plot_data = data.frame(matrix_data) %>% count(X1, X2)
   plot_data$n = plot_data$n / (nrow(oper[[1]]) / 3)
   wmat = matrix(0, ncol = p, nrow = p)
   wmat[as.matrix(plot_data[,1:2])] <- plot_data[,3]
-  g <- igraph::graph_from_adjacency_matrix(wmat, mode = "max", weighted = T)
+  g <- igraph::graph_from_adjacency_matrix(wmat, mode = "upper", weighted = "weight")
   E(g)$weight
   # g <- igraph::graph_from_edgelist(do.call("rbind", unique(unlist(dp$edges_list1, recursive = F))), directed = F)
   # g <- igraph::graph_from_edgelist(plot_data, directed = F)
@@ -292,7 +293,7 @@ for(misidx in 1:length(mis_rate_vec)){
   igraph::V(g)$color <- "#C83200"
 
   png(filename=paste(misrate, "_shuttle.png", sep = ""))
-  plot.igraph(g, vertex.label = names(df), vertex.label.dist = 2.5, layout = layout_as_star(g))
+  plot.igraph(g, vertex.label = names(df), vertex.label.dist = 2.5, layout = layout_as_star(g), edge.width = E(g)$weight * 10, edge.label = round(E(g)$weight, 2))
   dev.off()
 }
-
+install.packages("igraph")
