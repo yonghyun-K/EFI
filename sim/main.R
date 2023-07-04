@@ -697,14 +697,14 @@ png(filename=paste(ifelse(high_dim, "highd", "lowd"), "_", ifelse(MAR, "MAR", "M
 annotate_figure(plot_agg3, left = text_grob("log(Time)", face = "bold", size = 16, rot = 90))
 dev.off()
 
-resRMSE = matrix(paste(format(round(sapply(res2_list, function(x) x[6,]), 3), nsmall = 3), "(",format(round(sapply(res4_list, function(x) x[6,]), 3), nsmall = 3), ")", sep = ""), ncol = 4, nrow = 7)
+resRMSE = matrix(paste(format(round(sapply(res2_list, function(x) x[4,]), 3), nsmall = 3), "(",format(round(sapply(res4_list, function(x) x[4,]), 3), nsmall = 3), ")", sep = ""), ncol = 4, nrow = 7)
 colnames(resRMSE) <- data_list
 rownames(resRMSE) <- rownames(round(sapply(res2_list, function(x) x[6,]), 3))
-xtable::xtable(resRMSE)
+print(xtable::xtable(resRMSE, caption = "Accuracy"))
 
-resRMSE = matrix(paste(format(round(sapply(res1_list, function(x) x[6,]), 3), nsmall = 3), "(",format(round(sapply(res5_list, function(x) x[6,]), 3), nsmall = 3), ")", sep = ""), ncol = 4, nrow = 7)
+resRMSE = matrix(paste(format(round(sapply(res_list, function(x) x[4,] * 100), 3), nsmall = 3), "(",format(round(sapply(res5_list, function(x) x[4,] * 100), 3), nsmall = 3), ")", sep = ""), ncol = 4, nrow = 7)
 colnames(resRMSE) <- data_list
-rownames(resRMSE) <- rownames(round(sapply(res1_list, function(x) x[6,]), 3))
-xtable::xtable(resRMSE)
+rownames(resRMSE) <- rownames(round(sapply(res_list, function(x) x[6,]), 3))
+print(xtable::xtable(resRMSE, caption = "RMSE * 100"))
 
 # load("~/GitHub/EFI/sim/ws1.RData")
