@@ -21,7 +21,7 @@ set.seed(123)
 SIMNUM = 100
 
 high_dim = T
-MAR = T
+MAR = F
 
 if(interactive()) data_name = "breast_cancer"
 
@@ -241,6 +241,7 @@ res_list <- NULL
 res2_list <- NULL
 res3_list <- NULL
 res4_list <- NULL
+res5_list <- NULL
 for(data_name in data_list){
 eval(parse(text = paste("df_true =", data_name)))
 df_true = df_true %>%
@@ -265,7 +266,12 @@ n = nrow(df_true)
 levelone = names(which.max(summary(df_true[[1]])))
 trueval = mean(df_true[[1]] == levelone, na.rm = T)
 
-mis_rate_vec = seq(from = 0.1, to = 0.9, length = 9)
+if(MAR){
+  mis_rate_vec = seq(from = 0.1, to = 0.9, length = 9)
+}else{
+  mis_rate_vec = seq(from = 0.05, to = 0.45, length = 9)
+}
+
 
 oper <-
   foreach(mis_rate_idx= 1:length(mis_rate_vec), .packages = c("R.utils", "CVXR", "mice", "missForest", "Amelia", "EFI","dplyr", "igraph")) %:%
@@ -511,11 +517,13 @@ oper3 = lapply(oper, function(x) x[(nrow(x) / 3 * 2 + 1):nrow(x),])
 res2 = do.call("rbind", lapply(oper2, rowMeans, na.rm = T))
 res3 = do.call("rbind", lapply(oper3, rowMeans, na.rm = T))
 res4 = do.call("rbind", lapply(oper2, apply, 1, sd, na.rm = T))
+res5 = do.call("rbind", lapply(oper1, apply, 1, sd, na.rm = T))
 
 res_list = append(res_list, list(res))
 res2_list = append(res2_list, list(res2))
 res3_list = append(res3_list, list(res3))
 res4_list = append(res4_list, list(res4))
+res5_list = append(res5_list, list(res5))
 
 (BIAS = do.call("rbind", lapply(oper1, function(x) rowMeans(x - trueval, na.rm = T)))) # BIAS
 (SE = do.call("rbind", lapply(oper1, function(x) sqrt(apply(x, 1, function(y) mean((y - mean(y, na.rm = T))^2, na.rm = T) ))))) # SE
@@ -530,8 +538,8 @@ names(res_long) = names(res2_long) = names(res3_long) = c("missrate", "method", 
 # res_long <- res_long %>% filter(method != "pmm") # pmm not good
 
 plot_res = ggplot(res_long, aes(x = missrate, y = value, group = method)) +
-  geom_line(aes(color = method), linetype = 2) +
-  geom_line(data = filter(res_long, method == "EFI"), aes(color = "EFI"), size = 2) +
+  geom_line(aes(color = method, linetype = method),
+            size = ifelse(res_long$method == "EFI", 2, 0.5)) +
   scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
   labs(x = NULL, y = NULL) +
   ggtitle(data_name) +
@@ -540,6 +548,7 @@ plot_res = ggplot(res_long, aes(x = missrate, y = value, group = method)) +
   ggplot2::theme(panel.grid.major = element_line(color = "gray", linetype = "dashed"),
         panel.background = element_rect(fill = "white"),
         plot.title = element_text(size = 20, hjust = 0.5),
+        axis.text = element_text(size = 12),
         legend.title = element_text(size = 16),
         legend.text = element_text(size = 14),
         legend.position = "top")
@@ -549,8 +558,8 @@ plot(plot_res)
 dev.off()
 
 plot_res2 = ggplot(res2_long, aes(x = missrate, y = value, group = method)) +
-  geom_line(aes(color = method), linetype = 2) +
-  geom_line(data = filter(res2_long, method == "EFI"), aes(color = "EFI"), size = 2) +
+  geom_line(aes(color = method, linetype = method),
+            size = ifelse(res2_long$method == "EFI", 2, 0.5)) +
   scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
   labs(x = NULL, y = NULL) +
   ggtitle(data_name) +
@@ -559,6 +568,7 @@ plot_res2 = ggplot(res2_long, aes(x = missrate, y = value, group = method)) +
   ggplot2::theme(panel.grid.major = element_line(color = "gray", linetype = "dashed"),
         panel.background = element_rect(fill = "white"),
         plot.title = element_text(size = 20, hjust = 0.5),
+        axis.text = element_text(size = 12),
         legend.title = element_text(size = 16),
         legend.text = element_text(size = 14),
         legend.position = "top")
@@ -568,8 +578,8 @@ plot(plot_res2)
 dev.off()
 
 plot_res3 = ggplot(res3_long, aes(x = missrate, y = value, group = method)) +
-  geom_line(aes(color = method), linetype = 2) +
-  geom_line(data = filter(res3_long, method == "EFI"), aes(color = "EFI"), size = 2) +
+  geom_line(aes(color = method, linetype = method),
+            size = ifelse(res3_long$method == "EFI", 2, 0.5)) +
   scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
   labs(x = NULL, y = NULL) +
   ggtitle(data_name) +
@@ -578,6 +588,7 @@ plot_res3 = ggplot(res3_long, aes(x = missrate, y = value, group = method)) +
   ggplot2::theme(panel.grid.major = element_line(color = "gray", linetype = "dashed"),
                  panel.background = element_rect(fill = "white"),
                  plot.title = element_text(size = 20, hjust = 0.5),
+                 axis.text = element_text(size = 12),
                  legend.title = element_text(size = 16),
                  legend.text = element_text(size = 14),
                  legend.position = "top")
@@ -616,8 +627,8 @@ for(idx in 1:length(res_list)){
   # res_long <- res_long %>% filter(method != "pmm") # pmm not good
 
   plot_res = ggplot(res_long, aes(x = missrate, y = log(value), group = method)) +
-    geom_line(aes(color = method), linetype = 2) +
-    geom_line(data = filter(res_long, method == "EFI"), aes(color = "EFI"), size = 2) +
+    geom_line(aes(color = method, linetype = method),
+              size = ifelse(res_long$method == "EFI", 2, 0.5)) +
     scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
     labs(x = NULL, y = NULL) +
     # ggtitle(data_name, subtitle = paste("n = ", n, ", p = ", p)) +
@@ -626,13 +637,14 @@ for(idx in 1:length(res_list)){
     ggplot2::theme(panel.grid.major = element_line(color = "gray", linetype = "dashed"),
           panel.background = element_rect(fill = "white"),
           plot.title = element_text(size = 20, hjust = 0.5),
+          axis.text = element_text(size = 12),
           legend.title = element_text(size = 16),
           legend.text = element_text(size = 14),
           legend.position = "top")
 
   plot_res2 = ggplot(res2_long, aes(x = missrate, y = log(value), group = method)) +
-    geom_line(aes(color = method), linetype = 2) +
-    geom_line(data = filter(res2_long, method == "EFI"), aes(color = "EFI"), size = 2) +
+    geom_line(aes(color = method, linetype = method),
+              size = ifelse(res2_long$method == "EFI", 2, 0.5)) +
     scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
     labs(x = NULL, y = NULL) +
     # ggtitle(data_name, subtitle = paste("n = ", n, ", p = ", p)) +
@@ -641,13 +653,14 @@ for(idx in 1:length(res_list)){
     ggplot2::theme(panel.grid.major = element_line(color = "gray", linetype = "dashed"),
           panel.background = element_rect(fill = "white"),
           plot.title = element_text(size = 20, hjust = 0.5),
+          axis.text = element_text(size = 12),
           legend.title = element_text(size = 16),
           legend.text = element_text(size = 14),
           legend.position = "top")
 
   plot_res3 = ggplot(res3_long, aes(x = missrate, y = log(value), group = method)) +
-    geom_line(aes(color = method), linetype = 2) +
-    geom_line(data = filter(res3_long, method == "EFI"), aes(color = "EFI"), size = 2) +
+    geom_line(aes(color = method, linetype = method),
+              size = ifelse(res3_long$method == "EFI", 2, 0.5)) +
     scale_x_continuous(breaks = mis_rate_vec, labels = (function(x) sprintf("%.2f", x)) ) +
     labs(x = NULL, y = NULL) +
     # ggtitle(data_name, subtitle = paste("n = ", n, ", p = ", p)) +
@@ -656,6 +669,7 @@ for(idx in 1:length(res_list)){
     ggplot2::theme(panel.grid.major = element_line(color = "gray", linetype = "dashed"),
                    panel.background = element_rect(fill = "white"),
                    plot.title = element_text(size = 20, hjust = 0.5),
+                   axis.text = element_text(size = 12),
                    legend.title = element_text(size = 16),
                    legend.text = element_text(size = 14),
                    legend.position = "top")
@@ -668,19 +682,29 @@ for(idx in 1:length(res_list)){
 plot_agg <- ggarrange(plotlist = plot_list, nrow = 1, common.legend = TRUE, legend="bottom")
 
 png(filename=paste(ifelse(high_dim, "highd", "lowd"), "_", ifelse(MAR, "MAR", "MCAR"), "_","RMSE", ".png", sep = ""),  width = 300 * length(data_list),  height = 480)
-annotate_figure(plot_agg, left = "log(RMSE)")
+annotate_figure(plot_agg, left = text_grob("log(RMSE)", face = "bold", size = 16, rot = 90))
 dev.off()
 
 plot_agg2 <- ggarrange(plotlist = plot_list2, nrow = 1, common.legend = TRUE, legend="bottom")
 
 png(filename=paste(ifelse(high_dim, "highd", "lowd"), "_", ifelse(MAR, "MAR", "MCAR"), "_", "Accuracy", ".png", sep = ""),  width = 300 * length(data_list),  height = 480)
-annotate_figure(plot_agg2, left = "log(Accuracy)")
+annotate_figure(plot_agg2, left = text_grob("log(Accuracy)", face = "bold", size = 16, rot = 90))
 dev.off()
 
 plot_agg3 <- ggarrange(plotlist = plot_list3, nrow = 1, common.legend = TRUE, legend="bottom")
 
 png(filename=paste(ifelse(high_dim, "highd", "lowd"), "_", ifelse(MAR, "MAR", "MCAR"), "_", "Time", ".png", sep = ""),  width = 300 * length(data_list),  height = 480)
-annotate_figure(plot_agg3, left = "log(Time)")
+annotate_figure(plot_agg3, left = text_grob("log(Time)", face = "bold", size = 16, rot = 90))
 dev.off()
+
+resRMSE = matrix(paste(format(round(sapply(res2_list, function(x) x[6,]), 3), nsmall = 3), "(",format(round(sapply(res4_list, function(x) x[6,]), 3), nsmall = 3), ")", sep = ""), ncol = 4, nrow = 7)
+colnames(resRMSE) <- data_list
+rownames(resRMSE) <- rownames(round(sapply(res2_list, function(x) x[6,]), 3))
+xtable::xtable(resRMSE)
+
+resRMSE = matrix(paste(format(round(sapply(res1_list, function(x) x[6,]), 3), nsmall = 3), "(",format(round(sapply(res5_list, function(x) x[6,]), 3), nsmall = 3), ")", sep = ""), ncol = 4, nrow = 7)
+colnames(resRMSE) <- data_list
+rownames(resRMSE) <- rownames(round(sapply(res1_list, function(x) x[6,]), 3))
+xtable::xtable(resRMSE)
 
 # load("~/GitHub/EFI/sim/ws1.RData")
