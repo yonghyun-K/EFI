@@ -7,3 +7,6 @@
 20230419_165734.RData
 *.png
 *.RData
+.DS_Store
+.Rbuildignore
+*.Rproj
