@@ -17,24 +17,21 @@ library(EFI)
 ## Example commands
 
 ``` r
+library(EFI)
+
 # Import data and generate missingness.
-data(HairEyeColor)
-p = 3
-Y = do.call("rbind", apply(as.data.frame.table(HairEyeColor), 1, 
-  function(x) matrix(rep(x[1:p], each = x[p+1]), nc = p)))
-Y = as.data.frame(Y)
-for(k in 1:p){
-  Y[[k]] = factor(Y[[k]])
-}
-names(Y) <- names(dimnames(HairEyeColor))
-(n = nrow(Y)); sum(HairEyeColor)
-delta = matrix(rbinom(n * p, 1, 0.5), nr = n, nc = p)
-Y[delta == 0] = NA
+Y = as.data.frame.table(HairEyeColor, stringsAsFactors = TRUE)
+# Y = tidyr::uncount(Y, Freq) OR
+Y = Y[rep(seq_len(nrow(Y)), Y$Freq), ]; Y$Freq <- NULL
+n = nrow(Y); p = ncol(Y); rownames(Y) <- 1:n
+delta = matrix(rbinom(n * p, 1, 0.5), nr = n, nc = p); Y[delta == 0] = NA
 
 # Ensemble Fractional Imputation.
-cand.edges = as.list(data.frame(combn(p, 2)))
+cand.edges = apply(combn(p, 2), 2, list)
 dp = doublep(Y, cand.edges, freq = F)
+plot(dp)
 EFI = efi(Y, dp, freq = F)
+
 estimate(EFI, "(Hair == \"Black\") & (Eye == \"Brown\")")
 estimate(EFI, "(Hair == \"Black\") & (Sex == \"Male\")")
 ```
