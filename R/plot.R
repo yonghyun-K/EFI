@@ -33,6 +33,6 @@ plot.doublep = function(dp){
 
   # g2 <- graph_from_edgelist(rbind(sample_el), directed=F)
 
-  igraph::plot.igraph(g, layout = igraph::layout_nicely(g), vertex.label = namesY, vertex.shape = "none", edge.width = ifelse(tmp, 10, 1),
-       edge.color = ifelse(tmp == 0, "grey",tmp), asp = 0.5, vertex.label.cex = 1.2)
+  return(igraph::plot.igraph(g, layout = igraph::layout_nicely(g), vertex.label = namesY, vertex.shape = "none", edge.width = ifelse(tmp, 10, 1),
+       edge.color = ifelse(tmp == 0, "grey",tmp), asp = 0.5, vertex.label.cex = 1.2))
 }
