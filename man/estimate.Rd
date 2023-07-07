@@ -2,7 +2,7 @@
 % Please edit documentation in R/estimate.R
 \name{estimate}
 \alias{estimate}
-\title{Add together two numbers}
+\title{Estimate the joint probabilities}
 \usage{
 estimate(efi.obj, expr)
 }
@@ -15,7 +15,7 @@ estimate(efi.obj, expr)
 Estimates and Standard error of the parameters.
 }
 \description{
-Add together two numbers
+Estimate the joint probabilities
 }
 \examples{
 data(HairEyeColor)
@@ -26,13 +26,13 @@ for(k in 1:p){
 Y[[k]] = factor(Y[[k]])
 }
 names(Y) <- names(dimnames(HairEyeColor))
-# (n = nrow(Y)); sum(HairEyeColor)
+(n = nrow(Y)); sum(HairEyeColor)
 delta = matrix(rbinom(n * p, 1, 0.5), nr = n, nc = p)
 Y[delta == 0] = NA
 
 cand.edges = as.list(data.frame(combn(p, 2)))
 dp = doublep(Y, cand.edges, freq = F)
 EFI = efi(Y, dp, freq = F)
-estimate(EFI, "(V1 == \"Black\") & (V2 == \"Brown\")")
-estimate(EFI, "(V1 == \"Black\") & (V3 == \"Male\")")
+estimate(EFI, "(Hair == \"Black\") & (Eye == \"Brown\")")
+estimate(EFI, "(Hair == \"Black\") & (Sex == \"Male\")")
 }

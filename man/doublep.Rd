@@ -4,14 +4,14 @@
 \alias{doublep}
 \title{Double project data from candidate models}
 \usage{
-doublep(Y, cand.edges, freq = F)
+doublep(Y, edges_list, freq = F, R = 5)
 }
 \arguments{
 \item{Y}{categorical data with missingnes.Missing valuesa are encoded as NA. If Freq = T, the last column serves as the integer frequencies of the grouped observations.}
 
-\item{cand.edges}{candidate edges that are considered in the candidate graphical exponential model. Typicially, as.list(data.frame(combn(ncol(Y), 2))) is used.}
-
 \item{freq}{an optional logical value that indicates whether frequency column exists in the data frame Y.}
+
+\item{cand.edges}{candidate edges that are considered in the candidate graphical exponential model. Typicially, as.list(data.frame(combn(ncol(Y), 2))) is used.}
 }
 \value{
 A class  \code{"doubledp"}
@@ -28,7 +28,7 @@ for(k in 1:p){
 Y[[k]] = factor(Y[[k]])
 }
 names(Y) <- names(dimnames(HairEyeColor))
-# (n = nrow(Y)); sum(HairEyeColor)
+(n = nrow(Y)); sum(HairEyeColor)
 delta = matrix(rbinom(n * p, 1, 0.5), nr = n, nc = p)
 Y[delta == 0] = NA
 

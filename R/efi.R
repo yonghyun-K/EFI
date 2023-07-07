@@ -44,18 +44,18 @@ efi = function(Y, dp, freq = F){
   else colnames(Y)[ncol(Y)] <- "Freq"
 
   Y_reduced = Y %>% select(unique(unlist(edges_list1)), Freq)
-  Y_reduced = bind_cols(Y_reduced, dplyr::select(Y %>% select_if(~ any(is.na(.))), -matches(names(Y_reduced))))
+  Y_reduced = dplyr::bind_cols(Y_reduced, dplyr::select(Y %>% dplyr::select_if(~ any(is.na(.))), -dplyr::matches(names(Y_reduced))))
 
-  namestmp = names(cbind(Y, id = 1:n))
-  Y_FI0 = plyr::adply(cbind(Y, id = 1:n), 1, function(Z){
+  namestmp = names(cbind(Y, id = 1:nrow(Y)))
+  Y_FI0 = plyr::adply(cbind(Y, id = 1:nrow(Y)), 1, function(Z){
     if(any(is.na(Z))){
-      tmpY = cbind(expand.grid(lapply(Z[,is.na(Z),drop = F], levels)), Z[,!is.na(Z)])[namestmp]
+      tmpY = cbind(expand.grid(lapply(Z[,is.na(Z),drop = F], levels)), Z[,!is.na(Z)], row.names = NULL)[namestmp]
       return(tmpY)
     }else{
       Z
     }
   })
-  Y_FI0_reduced = Y_FI0 %>% select(colnames(Y_reduced))
+  Y_FI0_reduced = Y_FI0 %>% dplyr::select(colnames(Y_reduced))
 
   # tmpvec1 = c(sapply(dp$edges_list1, function(x){
   #   # print(x)
@@ -67,7 +67,7 @@ efi = function(Y, dp, freq = F){
 
   tmpvec1 = apply(sapply(dp$edges_list1, function(x){
     # print(x)
-    apply(select(marginalProbmat, -unique(unlist(x))), 1, prod) *
+    apply(dplyr::select(marginalProbmat, -unique(unlist(x))), 1, prod) *
       cvam::cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
                     cvam::cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
                                data = Y_reduced, freq = Freq), data = Y_reduced)$likVal

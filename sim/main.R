@@ -37,8 +37,10 @@ timenow1 = Sys.time()
 timenow0 = gsub(' ', '_', gsub('[-:]', '', timenow1))
 timenow = paste(timenow0, ".txt", sep = "")
 
-dir.create(timenow0)
-setwd(timenow0)
+if(interactive()){
+  dir.create(timenow0)
+  setwd(timenow0)
+}
 
 cores = min(detectCores() - 3, 100)
 myCluster <- makeCluster(cores, # number of cores to use

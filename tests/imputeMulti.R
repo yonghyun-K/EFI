@@ -1,13 +1,11 @@
-# library(imputeMulti)
 
-data(tract2221, package = "imputeMulti")
-Y = tract2221
-p = ncol(tract2221)
-cand.edges = as.list(data.frame(combn(p, 2)))
-dp = doublep(tract2221, cand.edges)
-plot(dp)
-EFI = efi(tract2221, dp)
-names(tract2221)
-lapply(tract2221, levels)
-summary(tract2221)
-estimate(EFI, "(marital_status == \"never_mar\") & (edu_attain == \"lt_hs\")")
+# summary(tract2221)
+# data(tract2221, package = "imputeMulti"); p = ncol(tract2221)
+# Y = tract2221
+# for(k in 1:p)Y[[k]] <- droplevels(Y[[k]])
+# summary(Y)
+# edges_list <- construct_tree(p, ntree = 10)
+# dp = doublep(Y, edges_list, R = 1)
+# plot(dp)
+# EFI = efi(tract2221, dp)
+# estimate(EFI, "(marital_status == \"never_mar\") & (edu_attain == \"lt_hs\")")

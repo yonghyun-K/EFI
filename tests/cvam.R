@@ -1,146 +1,89 @@
 # library(cvam)
-library(EFI)
+# library(EFI)
+# library(dplyr)
 
 data(crime, package = "cvam")
-Y = crime
-p = 2
-edges_list = apply(combn(p, 2), 2, list)
-dp = doublep(Y, edges_list, freq = T)
+Y = tidyr::uncount(data.frame(crime, stringsAsFactors= T), n); n = nrow(Y); p = ncol(Y)
+summary(Y)
+edges_list <- construct_tree(p)
+dp = doublep(Y, edges_list, freq = F, R = 1)
 plot(dp)
-EFI = efi(Y, dp, freq = T)
-names(Y)
-lapply(Y, levels)
-summary(Y)
-
-library(dplyr)
-estimate(EFI, "(V1 == \"no\") & (V2 == \"no\")")
-estimate(EFI, "(V1 == \"yes\") & (V2 == \"yes\")")
-
-sum(EFI$imp[3:4,5])
-
-library(cvam)
-
-cvamEstimate(~ V1 + V2, cvam(~V1 * V2, data = Y, freq = n), data = Y)
-cvamEstimate(~ V1 + V2, cvam(~V1 * V2, data = Y, freq = n), data = Y)$SE - estimate(EFI, "(V1 == \"no\") & (V2 == \"no\")")$sqrtB
-
-EFI$imp
-
-Y[1:8,3] <- 1
-
-Y[3, 3] <- 1000
-
-p = 2
-Y2 = do.call("rbind", apply(Y, 1, function(x) matrix(rep(x[1:p], each = x[p+1]), nc = p)))
-Y2 = as.data.frame(Y2)
-for(k in 1:p){
-  Y2[[k]] = factor(Y2[[k]])
-}
-names(Y2) <- colnames(crime)[1:2]
-miceres = mice::mice(Y2, printFlag = F, m = 30)
-
-mice::complete(miceres, action = 2)
-mean(mice::complete(miceres, action = 4)[,1] == "yes")
-
-
-
-
-cor(mice::complete(miceres, action = 1) == "no", mice::complete(miceres, action = 4) == "no")
-
-var(mice::complete(miceres, action = 2)[,1] == "no" & mice::complete(miceres, action = 2)[,2] == "no")
-
-miceres = mice::mice(Y2, printFlag = F, m = 30)
-tmp2 = sapply(1:30, function(x) mean(apply(mice::complete(miceres, action = x), 1, function(y) all(y == c("no", "no")) )))
-plot(tmp2)
-points(sapply(1:30, function(x) mean(rbinom(4, 1, 0.25))), col = "red")
-
-# var(tmp2)
-# mean(tmp2)
-Y
-
-sqrt(0.25 * 0.75 / 4)
-
-sqrt(0.5 * 0.5 / 6)
-
-micefit <-mice:::with.mids(data = miceres, exp = lm((V1 == "no") & (V2 == "no") ~ 1))
-micefit <-mice:::with.mids(data = miceres, exp = lm((V1 == "no") ~ 1))
-summary(mice::pool(micefit))
-tmp <- mice::pool(micefit)
-sqrt(tmp$pooled$t)
-sqrt(tmp$pooled$b)
-sqrt(tmp$pooled$ubar)
-
-sqrt(0.25 * 0.75 / 28.75)
-
-sqrt(tmp$pooled$estimate * (1 - tmp$pooled$estimate) / nrow(Y2))
-
-dp = doublep(Y2, cand.edges, freq = F)
-EFI = efi(Y2, dp, freq = F)
-names(Y)
-lapply(Y, levels)
-summary(Y)
-
-estimate(EFI, "(V1 == \"no\") & (V2 == \"no\")")
-estimate(EFI, "(V1 == \"yes\") & (V2 == \"yes\")")
-
+EFI = efi(Y, dp, freq = F)
+miceres = mice::mice(Y, printFlag = F)
+c(EFI = estimate(EFI, "(V1 == \"no\") & (V2 == \"no\")")$Estimate,
+  MICE = summary(mice::pool(mice:::with.mids(
+    data = miceres, exp = lm((V1 == "no") & (V2 == "no") ~ 1))))$estimate)
+c(EFI = estimate(EFI, "(V1 == \"yes\") & (V2 == \"yes\")")$Estimate,
+  MICE = summary(mice::pool(mice:::with.mids(
+    data = miceres, exp = lm((V1 == "yes") & (V2 == "yes") ~ 1))))$estimate)
 
 data(hivtest, package = "cvam")
-
-Y = hivtest
-p = 4
-edges_list = apply(combn(p, 2), 2, list)
-dp = doublep(Y, edges_list, freq = T)
-plot(dp)
-EFI = efi(Y, dp, freq = T)
-names(Y)
-lapply(Y, levels)
+Y = Y_true = tidyr::uncount(hivtest, COUNT); n = nrow(Y); p = ncol(Y)
 summary(Y)
+delta = matrix(rbinom(n * p, 1, 0.5), nr = n, nc = p)
+Y[delta == 0] <- NA
+edges_list <- construct_tree(p)
+dp = doublep(Y, edges_list, freq = F, R = 1)
+plot(dp)
+EFI = efi(Y, dp, freq = F)
+miceres = mice::mice(Y, printFlag = F)
+c(True = mean(Y_true$A == "neg" & Y_true$B == "neg"),
+  EFI = estimate(EFI, "(A == \"neg\") & (C == \"neg\")")$Estimate,
+  MICE = summary(mice::pool(mice:::with.mids(
+    data = miceres, exp = lm((A == "neg") & (C == "neg") ~ 1))))$estimate)
 
 data(microUCBAdmissions, package = "cvam")
-Y = microUCBAdmissions
-p = ncol(Y)
-edges_list = apply(combn(p, 2), 2, list)
-dp = doublep(Y, edges_list)
-plot(dp)
-EFI = efi(Y, dp)
-names(Y)
-lapply(Y, levels)
+Y = Y_true = microUCBAdmissions; n = nrow(Y); p = ncol(Y)
 summary(Y)
+delta = matrix(rbinom(n * p, 1, 0.5), nr = n, nc = p)
+Y[delta == 0] <- NA
+edges_list <- construct_tree(p)
+dp = doublep(Y, edges_list, freq = F, R = 1)
+plot(dp)
+EFI = efi(Y, dp, freq = F)
+miceres = mice::mice(Y, printFlag = F)
+c(True = mean(Y_true$Admit == "Admitted" & Y_true$Dept == "A"),
+  EFI = estimate(EFI, "(Admit == \"Admitted\") & (Dept == \"A\")")$Estimate,
+  MICE = summary(mice::pool(mice:::with.mids(
+    data = miceres, exp = lm((Admit == "Admitted") & (Dept == "A") ~ 1))))$estimate)
+
 
 data(seatbelt, package = "cvam")
-Y = seatbelt[2:8] # Error in Y = seatbelt
-p = 6
-edges_list = apply(combn(p, 2), 2, list)
-dp = doublep(Y, edges_list, freq = T)
-plot(dp)
-EFI = efi(Y, dp, freq = T)
-names(Y)
-lapply(Y, levels)
+Y = tidyr::uncount(data.frame(seatbelt, stringsAsFactors= T), n); n = nrow(Y); p = ncol(Y)
 summary(Y)
+edges_list <- construct_tree(p)
+dp = doublep(seatbelt, edges_list, freq = T, R = 1)
+plot(dp)
+EFI = efi(seatbelt, dp, freq = T)
+miceres = mice::mice(Y, printFlag = T)
+c(EFI = estimate(EFI, "(injury.p == \"no\") & (injury.f == \"no\")")$Estimate,
+  MICE = summary(mice::pool(mice:::with.mids(
+    data = miceres, exp = lm((injury.p == "no") & (injury.f == "no") ~ 1))))$estimate)
 
 data(cig2019, package = "cvam")
-Y = cig2019[sapply(cig2019, is.factor)]
-Y = Y[-5] # Error in Y = cig2019[sapply(cig2019, is.factor)]
-p = ncol(Y)
-edges_list = apply(combn(p, 2), 2, list)
-dp = doublep(Y, edges_list)
-plot(dp)
-EFI = efi(Y, dp)
-names(Y)
-lapply(Y, levels)
+Y = Y0 = cig2019[sapply(cig2019, is.factor)]; n = nrow(Y); p = ncol(Y)
+Y = dplyr::count(Y, !!!Y)
 summary(Y)
-
-
-data(abortion2000, package = "cvam")
-Y = abortion2000[sapply(abortion2000, is.factor)]
-p = ncol(Y)
-edges_list = apply(combn(p, 2), 2, list)
-
-edges_list = apply(rbind(1, 2:p), 2, list)
-dp = doublep(Y, edges_list)
-
+edges_list <- construct_tree(p)
+dp = doublep(Y, edges_list, freq = T, R = 1)
 plot(dp)
-EFI = efi(Y, dp)
-names(Y)
-lapply(Y, levels)
-summary(Y)
-estimate(EFI, "(Race == \"White\") & (CenRace == \"White\")")
+EFI = efi(Y, dp, freq = T)
+miceres = mice::mice(Y0, printFlag = T)
+c(EFI = estimate(EFI, "(sex_a == \"Male\") & (smkev_a == \"Yes\")")$Estimate,
+  MICE = summary(mice::pool(mice:::with.mids(
+    data = miceres, exp = lm((sex_a == "Male") & (smkev_a == "Yes") ~ 1))))$estimate)
+
+
+# data(abortion2000, package = "cvam")
+# Y = abortion2000[sapply(abortion2000, is.factor)]; n = nrow(Y); p = ncol(Y)
+# # table(dplyr::count(Y, !!!Y)$n)
+# summary(Y)
+# edges_list <- construct_tree(p)
+# dp = doublep(Y, edges_list, freq = F, R = 1)
+# plot(dp)
+# EFI = efi(Y, dp, freq = F)
+# miceres = mice::mice(Y, printFlag = T)
+# c(EFI = estimate(EFI, "(AbNoMore == \"No\") & (AbSingle == \"Yes\")")$Estimate,
+#   MICE = summary(mice::pool(mice:::with.mids(
+#     data = miceres, exp = lm((AbNoMore == "No") & (AbSingle == "Yes") ~ 1))))$estimate)
+

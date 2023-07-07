@@ -48,15 +48,25 @@ doublep = function(Y, edges_list, freq = F, R = 5){
 
   weightveclist = NULL
   for(r in 1:R){
-    print(r)
+    print(paste("R =", r))
 
-    tmpmat = sapply(c(edges_list1, edges_list2), function(x){
+    # tmpmat = sapply(c(edges_list1, edges_list2), function(x){
+    #   # print(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))))
+    #   apply(select(marginalProbmat, -unique(unlist(x))), 1, prod) *
+    #     cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
+    #             cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
+    #                  data = Y, freq = Freq), data = Y)$likVal
+    # })
+    utils::capture.output(tmpmat <- plyr::laply(c(edges_list1, edges_list2), function(x){
       # print(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))))
       apply(select(marginalProbmat, -unique(unlist(x))), 1, prod) *
         cvamLik(formula(paste("~", paste(namesY[unique(unlist(x))], collapse = "+"))),
                 cvam(formula(paste("~", paste(sapply(x, function(z) paste(namesY[z], collapse = "*")), collapse = "+"))),
                      data = Y, freq = Freq), data = Y)$likVal
-    })
+    }, .progress = "win"))
+    if(!is.vector(tmpmat)) tmpmat = t(tmpmat)
+
+    # tmpmat = ifelse(length(dim(tmpmat)) == 1, tmpmat, t(tmpmat))
 
     w = CVXR::Variable(ncol(tmpmat))
     constraints <- list(sum(w) == 1, w >= 0)
@@ -96,7 +106,7 @@ if(res$status != "optimal" & res$status != "optimal_inaccurate"){
     # edges_list1 = list(append(edges_list1[[1]], lapply(edges_list2[weightvec[tmpidx] != 0], unlist)))
     print(edges_list1)
 
-    print(lapply(edges_list1[[1]], function(x) names(Y)[x]))
+    # print(lapply(edges_list1[[1]], function(x) names(Y)[x]))
     # print(edges_list2[weightvec[tmpidx] != 0])
     edges_list2 = edges_list2[weightvec[tmpidx] == 0]
   }

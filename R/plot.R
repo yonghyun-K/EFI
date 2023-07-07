@@ -21,11 +21,18 @@
 #' plot(dp)
 #' @export
 plot.doublep = function(dp){
-  weightmat = dp$weightmat
   namesY = dp$namesY
-  g <- graph_from_adjacency_matrix(weightmat, mode = "lower", weighted = "weight")
-  # plot(g, edge.width = E(g)$weight, edge.label = E(g)$weight, label = coords)
 
-  V(g)$color <- "#C83200"
-  plot(g, edge.label = E(g)$weight, vertex.label = namesY, vertex.label.dist = 2.5)
+  sample_el <- do.call("rbind", unlist(dp$edges_list1, recursive = F))
+  sample_el2 <- do.call("rbind", unique(unlist(dp$edges_list, recursive = F)))
+  sample_el2 <- as.matrix(dplyr::anti_join(data.frame(sample_el2), data.frame(sample_el), by = dplyr::join_by(X1, X2)))
+
+  g <- igraph::graph_from_edgelist(rbind(sample_el, sample_el2), directed=F)
+  edgesintree = sapply(dp$edges_list1, length)
+  tmp <- c(rep(1:length(edgesintree), times = edgesintree), rep(0, nrow(sample_el2)))
+
+  # g2 <- graph_from_edgelist(rbind(sample_el), directed=F)
+
+  igraph::plot.igraph(g, layout = igraph::layout_nicely(g), vertex.label = namesY, vertex.shape = "none", edge.width = ifelse(tmp, 10, 1),
+       edge.color = ifelse(tmp == 0, "grey",tmp), asp = 0.5, vertex.label.cex = 1.2)
 }
