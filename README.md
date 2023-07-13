@@ -21,8 +21,7 @@ library(EFI)
 
 # Import data and generate missingness.
 Y = as.data.frame.table(HairEyeColor, stringsAsFactors = TRUE)
-# Y = tidyr::uncount(Y, Freq) OR
-Y = Y[rep(seq_len(nrow(Y)), Y$Freq), ]; Y$Freq <- NULL
+Y = Y[rep(seq_len(nrow(Y)), Y$Freq), ]; Y$Freq <- NULL # OR # Y = tidyr::uncount(Y, Freq)
 n = nrow(Y); p = ncol(Y); rownames(Y) <- 1:n
 delta = matrix(rbinom(n * p, 1, 0.5), nr = n, nc = p); Y[delta == 0] = NA
 
