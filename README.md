@@ -5,6 +5,8 @@ can handle high dimensional categorical data. It uses the idea of random
 forest to fit multiple reduced models and then combine multiple models
 using model weights.
 
+## **Paper**: Kwon, Y., & Kim, J. (2023). [Ensemble Fractional Imputation for Incomplete Categorical Data with a Graphical Model.](https://dmlr.ai/assets/accepted-papers/135/CameraReady/DMLR_paper.pdf) *In Workshop on Data-centric Machine Learning Research, International Conference on Machine Learning (ICML).*
+
 ## Installation
 
 ``` r
