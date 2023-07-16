@@ -1,8 +1,8 @@
 # Ensemble Fractional Imputation
 
 Ensemble Fractional Imputation is a nonparametric imputation method that
-can handle high dimensional categorical data. It uses the idea of random
-forest to fit multiple reduced models and then combine multiple models
+can handle high dimensional categorical data. It uses the idea of a random
+forest to fit multiple reduced tree models and then combines multiple models
 using model weights.
 
 **Paper**: Kwon, Y., & Kim, J. (2023). [Ensemble Fractional Imputation for Incomplete Categorical Data with a Graphical Model.](https://dmlr.ai/assets/accepted-papers/135/CameraReady/DMLR_paper.pdf) *In Workshop on Data-centric Machine Learning Research, International Conference on Machine Learning (ICML).*
